@@ -11,7 +11,7 @@ export const A = {
   listeners: new Set(),
 };
 
-export const APP_VERSION = '0.2.0';
+export const APP_VERSION = '0.3.0';
 
 // ---------- общие помощники ----------
 export function nowISO() {
@@ -260,6 +260,37 @@ export function photosOf(scope, ref, slot) {
 }
 export const slotPhotos = (o, slot) => photosOf('object', o.field_id, slot);
 
+const SLOT_NAMES = { house_general: 'Общий вид дома', area: 'Фото раздела', screenshot: 'Скриншот уровня сети', extra: 'Дополнительное фото' };
+
+// Снимок атрибутов фото на момент съёмки: к чему относится, где находится, кто снял.
+// Не меняется при последующих правках карточки: так видно, что было на месте в момент кадра.
+export function photoAttr(scope, ref, slot) {
+  const S = A.S, cfg = A.cfg;
+  const sl = cfg.photo_slots.find(x => x.id === slot);
+  const base = {
+    protocol_code: S.protocol_code, object_code: S.object_code, revision: S.revision,
+    author: S.inspector.name, author_role: 'inspector', app_version: APP_VERSION,
+    slot_label: sl ? sl.label : (SLOT_NAMES[slot] || slot),
+  };
+  if (scope === 'object') {
+    const o = S.objects[ref];
+    if (!o) return { ...base, subject: 'object', field_id: ref };
+    const sec = sectionCfg(o.section);
+    return {
+      ...base, subject: 'object', field_id: o.field_id, system: o.system,
+      section_id: o.section, section_num: sec.num, section_title: sec.title,
+      component_state: o.component.state, component_name: o.component.name,
+      location: { ...o.location }, location_text: locString(o),
+    };
+  }
+  if (scope === 'zone') {
+    const zc = cfg.comms_zones.find(z => z.id === ref);
+    return { ...base, subject: 'zone', zone_id: ref, zone_label: zc ? zc.label : ref, section_num: 'ЧЛ-10', section_title: 'Связь и питание' };
+  }
+  const sec = sectionCfg(ref);
+  return { ...base, subject: 'section', section_id: ref, section_num: sec ? sec.num : '', section_title: sec ? sec.title : '' };
+}
+
 export async function addPhoto({ scope, ref, slot, blob, thumb, w, h, source }) {
   if (!canEdit()) throw new Error('Обследование закрыто для правок');
   const S = A.S;
@@ -268,7 +299,7 @@ export async function addPhoto({ scope, ref, slot, blob, thumb, w, h, source }) 
   const rec = {
     photo_id: id, scope, ref, slot, captured_at: nowISO(), w, h,
     size: blob.size, mime: blob.type || 'image/jpeg', source,
-    void: false, void_reason: '', flags: { people: false }, blob, thumb,
+    void: false, void_reason: '', flags: { people: false }, attr: photoAttr(scope, ref, slot), blob, thumb,
   };
   await db.photoPut(rec);
   A.PH.set(id, stripBlobs(rec));

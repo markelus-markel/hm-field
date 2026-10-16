@@ -8,6 +8,7 @@ import {
   summary, commsRows, sectionStatus, replaceFromBackup,
 } from './model.js';
 import { esc, LBL, STATUS, fmtDT } from './util.js';
+import { photoRegister, componentRegister, monitoringMap, toCSV, registryReportHTML, attrOf } from './registry.js';
 
 const extOf = mime => ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif' }[mime] || 'jpg');
 const dataURLtoBlob = u => {
@@ -30,6 +31,7 @@ export function surveyJSON(photoFiles = {}, sigFiles = {}) {
   const sm = summary();
   const pr = passReport();
   const photoIds = (scope, ref, slot) => photosOf(scope, ref, slot).map(p => p.photo_id);
+  const mmap = monitoringMap();
   return {
     schema_version: cfg.schema_version,
     kind: 'hm-field-survey',
@@ -107,7 +109,10 @@ export function surveyJSON(photoFiles = {}, sigFiles = {}) {
       photo_id: p.photo_id, file: photoFiles[p.photo_id]?.path || null, sha256: photoFiles[p.photo_id]?.sha256 || null,
       scope: p.scope, ref: p.ref, slot: p.slot, captured_at: p.captured_at, width: p.w, height: p.h, size: p.size,
       source: p.source, void: p.void, void_reason: p.void_reason, people_or_personal_data_flag: !!(p.flags && p.flags.people),
+      attribution: attrOf(p),
     })),
+    registers: { components: componentRegister(), photos: photoRegister(photoFiles) },
+    monitoring_map: mmap,
   };
 }
 
@@ -196,6 +201,8 @@ export function reportHTML(imgSrc) {
   parts.push(`<section><h2>ЧЛ-13. КОНТРОЛЬ ПЕРЕД УХОДОМ С ОБЪЕКТА</h2><table class="t">${runControl().map(c => `<tr><td class="b">${mark(c.ok)}</td><td>${esc(c.text)}</td><td class="s">${c.ok ? '' : esc(c.details.join('; '))}</td></tr>`).join('')}</table>
   <h3>Пробелы и причины</h3>${gaps().length ? `<table class="t">${gaps().map(g => `<tr><td>${esc(g.source)}</td><td>${esc(g.text)}</td><td>${esc(gapReason(g.id))}</td></tr>`).join('')}</table>` : '<p>Пробелов нет.</p>'}</section>`);
 
+  parts.push(registryReportHTML(gallery));
+
   parts.push(`<section><h2>ИТОГ</h2>
   <table class="kv">
   <tr><th>Количество Field Objects</th><td>${sm.objects_total}</td></tr>
@@ -255,6 +262,10 @@ export async function buildPackage(kind, onProgress = () => {}) {
   const survey = surveyJSON(photoFiles, sigFiles);
   await add('survey.json', JSON.stringify(survey, null, 2));
   await add('changelog.json', JSON.stringify(A.log, null, 2));
+  onProgress('Реестры и схема');
+  await add('registry/component_register.csv', toCSV(componentRegister()));
+  await add('registry/photo_register.csv', toCSV(photoRegister(photoFiles)));
+  await add('registry/monitoring_map.json', JSON.stringify(monitoringMap(), null, 2));
   onProgress('Печатный протокол');
   const rel = id => {
     if (id.startsWith('sig:')) return sigFiles[id.slice(4)];

@@ -291,3 +291,20 @@ button.menu { appearance: none; border: 0; background: transparent; font: inheri
 .sc.on small, .sc.on.ok b::before { color: inherit; }
 input, textarea, select, canvas { scroll-margin-top: calc(var(--hh, 57px) + 76px); }
 .card > p:first-child { margin-top: 0; }
+
+/* реестр и схема */
+.reg-card { margin-top: 10px; }
+.lvl { margin-top: 10px; }
+.lvl-h { font-weight: 800; padding: 6px 10px; background: var(--bg2, #eef1f4); border-radius: 8px; }
+.room { margin: 8px 0 8px 10px; padding-left: 10px; border-left: 3px solid var(--line); }
+.room-h { font-weight: 700; margin-bottom: 4px; }
+.cmp { padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.cmp-h { display: block; text-decoration: none; color: inherit; }
+.mon { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--mute); margin: 4px 0; }
+.sys { display: inline-block; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: #e3e8ee; margin-right: 6px; }
+.reg-i { display: flex; gap: 10px; align-items: center; padding: 10px; margin: 6px 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: inherit; }
+.reg-i.void, .reg-p.void { opacity: .55; }
+.reg-i .fid { font-weight: 800; font-size: 12px; }
+.reg-i .mt, .reg-p .mt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.reg-i small, .reg-p small { color: var(--mute); }
+.reg-p { display: flex; gap: 10px; padding: 10px; margin: 6px 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }

@@ -12,6 +12,7 @@ import {
 import { startStream, stopStream, grabFrame, fromFile, savePhoto } from './camera.js';
 import { esc, LBL, STATUS, fmtDT, fmtTime, fmtBytes } from './util.js';
 import { nextStep, why } from './nav.js';
+import { attrOf } from './registry.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 export const camURL = (scope, ref, slot, back) =>
@@ -172,6 +173,7 @@ export function screenMap() {
     <div class="right"><b>${closed} из ${total}</b><div class="hint">разделов закрыто</div></div></div>
     <div class="prog"><i style="width:${Math.round(closed / total * 100)}%"></i></div></section>
     ${(() => { const n = nextStep(); return n ? `<a class="next-card" href="${n.href}"><small>Дальше</small><b>${esc(n.num ? n.num + ' · ' : '')}${esc(n.title)}</b><span>${esc(n.label || 'открыть')} ›</span></a>` : '<div class="done"><b>✓ Все шаги выполнены</b>. Осталось выгрузить пакет на экране «Подписи».</div>'; })()}
+    <a class="next-card reg-card" href="#/registry"><small>Собирается автоматически</small><b>Реестр и схема</b><span>компоненты, фото, расположение ›</span></a>
     <p class="hint center"><a href="#/about">Зачем это обследование</a></p>
     <div class="map">${secs.filter(s => s.kind !== 'misc').map(card).join('')}</div>
     <div class="map">
@@ -537,9 +539,11 @@ export function registerScreenActions() {
     const m = A.PH.get(id);
     if (!m) return;
     const url = await photoURL(id, true);
-    const info = m.scope === 'object' ? `${m.ref} · ${camSlotInfo('object', m.ref, m.slot).label}` : m.scope === 'zone' ? `Связь: ${m.ref}` : `${m.ref} · ${camSlotInfo(m.scope, m.ref, m.slot).label}`;
+    const at = attrOf(m);
+    const subj = at.subject === 'object' ? `${at.field_id} · ${at.component_name || at.system || ''}` : at.subject === 'zone' ? `Связь: ${at.zone_label}` : `${at.section_num} ${at.section_title}`;
+    const info = `${subj}<br>${esc(at.slot_label || '')}${at.location_text ? '<br>Где: ' + esc(at.location_text) : ''}<br>Снял: ${esc(at.author || '—')}${at.snapshot === false ? ' (атрибуты восстановлены)' : ''}`;
     modal(`<h3>${esc(id)}</h3><img class="full" src="${url}" alt="">
-    <div class="hint">${esc(info)}<br>${esc(fmtDT(m.captured_at))} · ${m.w}×${m.h} · ${fmtBytes(m.size)} · ${m.source === 'camera' ? 'камера приложения' : 'файл'}</div>
+    <div class="hint">${info}<br>${esc(fmtDT(m.captured_at))} · ${m.w}×${m.h} · ${fmtBytes(m.size)} · ${m.source === 'camera' ? 'камера приложения' : 'файл'}</div>
     <div class="row"><button class="btn ghost" data-act="photo-people" data-id="${esc(id)}"${dis()}>${m.flags && m.flags.people ? '⚠ Люди / данные жильцов — снять отметку' : '⚠ На снимке люди или данные жильцов'}</button></div>
     <div class="row"><button class="btn ghost danger" data-act="photo-void" data-id="${esc(id)}"${dis()}>Убрать из набора (VOID)</button><button class="btn" data-act="modal-close">Закрыть</button></div>`, 'photo');
   };
