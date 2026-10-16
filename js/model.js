@@ -11,7 +11,7 @@ export const A = {
   listeners: new Set(),
 };
 
-export const APP_VERSION = '0.3.0';
+export const APP_VERSION = '0.4.0';
 
 // ---------- общие помощники ----------
 export function nowISO() {
@@ -139,6 +139,7 @@ export async function initState() {
   A.PH = new Map(photos.map(p => [p.photo_id, stripBlobs(p)]));
   A.log = await db.logAll();
   reconcileCounters();
+  if (migrateModel()) { try { await db.kvSet('survey', A.S); } catch (e) { /* сохранится при следующей правке */ } }
   return true;
 }
 
@@ -208,10 +209,93 @@ export function addObject(system) {
     anomaly: { state: null, text: '' },
     power: null, signal: null, obs_location: null,
     items: {}, slots: {},
+    ...modelDefaults(),
   };
   addLog({ kind: 'object_add', field_id: fid, system });
   touch(); scheduleSave(0);
   return fid;
+}
+
+// ---------- паспорт элемента для 3D-модели: постоянный ID, тип, шильдик, размеры, связи ----------
+export function newUid() {
+  const c = globalThis.crypto;
+  if (c && c.randomUUID) return 'hmf-' + c.randomUUID();
+  return 'hmf-' + Array.from({ length: 4 }, () => Math.random().toString(16).slice(2, 10).padEnd(8, '0')).join('');
+}
+export function modelDefaults() {
+  return {
+    uid: newUid(),
+    element: { type: null, type_other: '' },
+    plate: { manufacturer: '', model: '', serial: '', rating: '' },
+    dims: { dn_mm: '', length_m: '', size: '', position_note: '', scale_ref: null },
+    links: [],
+  };
+}
+// Объекты из версий до 0.4.0 получают недостающие поля. Существующие данные не меняются.
+export function migrateModel() {
+  let changed = false;
+  for (const o of Object.values(A.S.objects)) {
+    const d = modelDefaults();
+    for (const k of Object.keys(d)) {
+      if (o[k] == null) { o[k] = d[k]; changed = true; }
+      else if (typeof d[k] === 'object' && !Array.isArray(d[k])) {
+        for (const kk of Object.keys(d[k])) if (o[k][kk] === undefined) { o[k][kk] = d[k][kk]; changed = true; }
+      }
+    }
+  }
+  return changed;
+}
+export const elementTypes = system => (A.cfg.element_types && A.cfg.element_types[system]) || [];
+export const elementTypeOf = o => elementTypes(o.system).find(t => t.id === (o.element && o.element.type)) || null;
+export const linkRels = () => A.cfg.link_rels || [];
+
+export function addLink(fid, rel, ref, note = '') {
+  if (!canEdit()) return false;
+  const o = A.S.objects[fid], t = A.S.objects[ref];
+  if (!o || !t || fid === ref || !linkRels().some(r => r.id === rel)) return false;
+  if (o.links.some(l => l.rel === rel && l.ref === ref)) return false;
+  o.links.push({ rel, ref, note: note.trim() });
+  addLog({ kind: 'link_add', field_id: fid, rel, ref, note: note.trim() });
+  touch(); scheduleSave(0);
+  return true;
+}
+export function removeLink(fid, i) {
+  if (!canEdit()) return false;
+  const o = A.S.objects[fid];
+  const l = o && o.links[i];
+  if (!l) return false;
+  o.links.splice(i, 1);
+  addLog({ kind: 'link_remove', field_id: fid, rel: l.rel, ref: l.ref });
+  touch(); scheduleSave(0);
+  return true;
+}
+// Все связи между активными объектами в виде рёбер. Одна связь, записанная с обеих сторон, считается один раз.
+export function linkEdges() {
+  const act = new Set(activeObjects().map(o => o.field_id));
+  const seen = new Map();
+  for (const o of activeObjects()) {
+    for (const l of o.links || []) {
+      if (!act.has(l.ref)) continue;
+      let src = o.field_id, dst = l.ref, type = 'feeds';
+      if (l.rel === 'from') { src = l.ref; dst = o.field_id; }
+      else if (l.rel === 'conn') { type = 'connected'; [src, dst] = [src, dst].sort(); }
+      const k = `${type}|${src}|${dst}`;
+      if (!seen.has(k)) seen.set(k, { src, dst, type, note: l.note || '' });
+      else if (l.note && !seen.get(k).note) seen.get(k).note = l.note;
+    }
+  }
+  return [...seen.values()].sort((a, b) => (a.src + a.dst < b.src + b.dst ? -1 : 1));
+}
+// Что уже собрано для 3D по элементу.
+export function model3dState(o) {
+  const p = o.plate || {}, d = o.dims || {};
+  const linked = linkEdges().some(e => e.src === o.field_id || e.dst === o.field_id);
+  return {
+    type: !!(o.element && o.element.type),
+    links: linked,
+    dims: !!(String(d.dn_mm || '').trim() || String(d.length_m || '').trim() || String(d.size || '').trim()),
+    plate: [p.manufacturer, p.model, p.serial, p.rating].some(v => String(v || '').trim()),
+  };
 }
 
 export function voidObject(fid, reason) {
@@ -281,6 +365,8 @@ export function photoAttr(scope, ref, slot) {
       section_id: o.section, section_num: sec.num, section_title: sec.title,
       component_state: o.component.state, component_name: o.component.name,
       location: { ...o.location }, location_text: locString(o),
+      object_uid: o.uid || null, element_type: o.element && o.element.type || null,
+      ifc_class: (elementTypeOf(o) || {}).ifc || null,
     };
   }
   if (scope === 'zone') {

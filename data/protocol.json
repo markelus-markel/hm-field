@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "protocol": {
     "code": "AG-CN-SUTO-13A-FIELD-01",
     "version": "v0.1",
@@ -74,6 +74,308 @@
     "levels": ["Подвал", "1 этаж", "2 этаж и выше", "Кровля / чердак", "Снаружи здания"],
     "rooms": ["Технический подвал", "Тепловой узел", "Электрощитовая / ГРЩ", "Лифтовая зона", "Подъезд (холл / лестница)", "Технический этаж / чердак", "Другое"]
   },
+  "element_types": {
+    "HEAT": [
+      {
+        "id": "valve",
+        "label": "Задвижка / вентиль / кран",
+        "ifc": "IfcValve"
+      },
+      {
+        "id": "pump",
+        "label": "Насос",
+        "ifc": "IfcPump"
+      },
+      {
+        "id": "heat_exchanger",
+        "label": "Теплообменник",
+        "ifc": "IfcHeatExchanger"
+      },
+      {
+        "id": "elevator_unit",
+        "label": "Элеватор / смесительный узел",
+        "ifc": "IfcFlowController"
+      },
+      {
+        "id": "flow_meter",
+        "label": "Счётчик (тепло, вода)",
+        "ifc": "IfcFlowMeter"
+      },
+      {
+        "id": "sensor",
+        "label": "Манометр / термометр / датчик",
+        "ifc": "IfcSensor"
+      },
+      {
+        "id": "filter",
+        "label": "Фильтр / грязевик",
+        "ifc": "IfcFilter"
+      },
+      {
+        "id": "pipe",
+        "label": "Трубопровод (участок)",
+        "ifc": "IfcPipeSegment"
+      },
+      {
+        "id": "riser",
+        "label": "Стояк",
+        "ifc": "IfcPipeSegment"
+      },
+      {
+        "id": "tank",
+        "label": "Бак / ёмкость / приямок",
+        "ifc": "IfcTank"
+      },
+      {
+        "id": "controller",
+        "label": "Контроллер / регулятор",
+        "ifc": "IfcController"
+      },
+      {
+        "id": "other",
+        "label": "Другое",
+        "ifc": "IfcBuildingElementProxy"
+      }
+    ],
+    "CWS": [
+      {
+        "id": "valve",
+        "label": "Задвижка / вентиль / кран",
+        "ifc": "IfcValve"
+      },
+      {
+        "id": "pump",
+        "label": "Насос",
+        "ifc": "IfcPump"
+      },
+      {
+        "id": "flow_meter",
+        "label": "Счётчик (тепло, вода)",
+        "ifc": "IfcFlowMeter"
+      },
+      {
+        "id": "sensor",
+        "label": "Манометр / термометр / датчик",
+        "ifc": "IfcSensor"
+      },
+      {
+        "id": "filter",
+        "label": "Фильтр / грязевик",
+        "ifc": "IfcFilter"
+      },
+      {
+        "id": "pipe",
+        "label": "Трубопровод (участок)",
+        "ifc": "IfcPipeSegment"
+      },
+      {
+        "id": "riser",
+        "label": "Стояк",
+        "ifc": "IfcPipeSegment"
+      },
+      {
+        "id": "tank",
+        "label": "Бак / ёмкость / приямок",
+        "ifc": "IfcTank"
+      },
+      {
+        "id": "controller",
+        "label": "Контроллер / регулятор",
+        "ifc": "IfcController"
+      },
+      {
+        "id": "other",
+        "label": "Другое",
+        "ifc": "IfcBuildingElementProxy"
+      }
+    ],
+    "HWS": [
+      {
+        "id": "valve",
+        "label": "Задвижка / вентиль / кран",
+        "ifc": "IfcValve"
+      },
+      {
+        "id": "pump",
+        "label": "Насос",
+        "ifc": "IfcPump"
+      },
+      {
+        "id": "heat_exchanger",
+        "label": "Теплообменник",
+        "ifc": "IfcHeatExchanger"
+      },
+      {
+        "id": "flow_meter",
+        "label": "Счётчик (тепло, вода)",
+        "ifc": "IfcFlowMeter"
+      },
+      {
+        "id": "sensor",
+        "label": "Манометр / термометр / датчик",
+        "ifc": "IfcSensor"
+      },
+      {
+        "id": "filter",
+        "label": "Фильтр / грязевик",
+        "ifc": "IfcFilter"
+      },
+      {
+        "id": "pipe",
+        "label": "Трубопровод (участок)",
+        "ifc": "IfcPipeSegment"
+      },
+      {
+        "id": "riser",
+        "label": "Стояк",
+        "ifc": "IfcPipeSegment"
+      },
+      {
+        "id": "tank",
+        "label": "Бак / ёмкость / приямок",
+        "ifc": "IfcTank"
+      },
+      {
+        "id": "controller",
+        "label": "Контроллер / регулятор",
+        "ifc": "IfcController"
+      },
+      {
+        "id": "other",
+        "label": "Другое",
+        "ifc": "IfcBuildingElementProxy"
+      }
+    ],
+    "SEWER": [
+      {
+        "id": "pipe",
+        "label": "Трубопровод (участок)",
+        "ifc": "IfcPipeSegment"
+      },
+      {
+        "id": "riser",
+        "label": "Стояк",
+        "ifc": "IfcPipeSegment"
+      },
+      {
+        "id": "valve",
+        "label": "Задвижка / вентиль / кран",
+        "ifc": "IfcValve"
+      },
+      {
+        "id": "pump",
+        "label": "Насос",
+        "ifc": "IfcPump"
+      },
+      {
+        "id": "tank",
+        "label": "Бак / ёмкость / приямок",
+        "ifc": "IfcTank"
+      },
+      {
+        "id": "other",
+        "label": "Другое",
+        "ifc": "IfcBuildingElementProxy"
+      }
+    ],
+    "ELECTRICAL": [
+      {
+        "id": "main_board",
+        "label": "ГРЩ / ВРУ",
+        "ifc": "IfcElectricDistributionBoard"
+      },
+      {
+        "id": "dist_board",
+        "label": "Распределительный щит",
+        "ifc": "IfcElectricDistributionBoard"
+      },
+      {
+        "id": "el_meter",
+        "label": "Счётчик электроэнергии",
+        "ifc": "IfcFlowMeter"
+      },
+      {
+        "id": "breaker",
+        "label": "Автомат / рубильник",
+        "ifc": "IfcProtectiveDevice"
+      },
+      {
+        "id": "cable",
+        "label": "Кабель / шинопровод",
+        "ifc": "IfcCableSegment"
+      },
+      {
+        "id": "transformer",
+        "label": "Трансформатор",
+        "ifc": "IfcTransformer"
+      },
+      {
+        "id": "controller",
+        "label": "Контроллер / регулятор",
+        "ifc": "IfcController"
+      },
+      {
+        "id": "other",
+        "label": "Другое",
+        "ifc": "IfcBuildingElementProxy"
+      }
+    ],
+    "LIFT": [
+      {
+        "id": "lift",
+        "label": "Лифт (шахта, кабина)",
+        "ifc": "IfcTransportElement"
+      },
+      {
+        "id": "lift_machine",
+        "label": "Лебёдка / машинное помещение лифта",
+        "ifc": "IfcTransportElement"
+      },
+      {
+        "id": "lift_cabinet",
+        "label": "Шкаф управления лифтом",
+        "ifc": "IfcElectricDistributionBoard"
+      },
+      {
+        "id": "other",
+        "label": "Другое",
+        "ifc": "IfcBuildingElementProxy"
+      }
+    ],
+    "ENV": [
+      {
+        "id": "sensor",
+        "label": "Манометр / термометр / датчик",
+        "ifc": "IfcSensor"
+      },
+      {
+        "id": "other",
+        "label": "Другое",
+        "ifc": "IfcBuildingElementProxy"
+      }
+    ],
+    "OTHER": [
+      {
+        "id": "other",
+        "label": "Другое",
+        "ifc": "IfcBuildingElementProxy"
+      }
+    ]
+  },
+  "link_rels": [
+    {
+      "id": "from",
+      "label": "получает от"
+    },
+    {
+      "id": "to",
+      "label": "питает / передаёт в"
+    },
+    {
+      "id": "conn",
+      "label": "соединён с (без направления)"
+    }
+  ],
   "photo_slots": [
     { "id": "general_room", "label": "Общий вид помещения", "hint": "Помещение целиком, чтобы было понятно, где вы находитесь" },
     { "id": "whole_object", "label": "Объект целиком", "hint": "Весь узел / компонент в кадре" },

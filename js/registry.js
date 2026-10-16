@@ -2,7 +2,7 @@
 // Все три собираются из данных обследования автоматически: фото попадает в них сразу после съёмки.
 import {
   A, allObjects, activeObjects, sectionCfg, sysCfg, photosOf, locString, readingDefs, evidenceFull, photoAttr,
-  commsRows, zoneList, nowISO,
+  commsRows, zoneList, nowISO, elementTypeOf, linkEdges, model3dState,
 } from './model.js';
 import { esc, LBL, STATUS, download, fmtDT } from './util.js';
 import { ui, pill, thumbs, hydrate, toast } from './ui.js';
@@ -20,7 +20,7 @@ export function photoRegister(files = {}) {
     const now = o ? locString(o) : null;
     return {
       photo_id: p.photo_id, file: files[p.photo_id]?.path || '', sha256: files[p.photo_id]?.sha256 || '',
-      subject: at.subject, field_id: at.field_id || '', zone: at.zone_label || '',
+      subject: at.subject, field_id: at.field_id || '', object_uid: at.object_uid || (o && o.uid) || '', element_type: at.element_type || '', ifc_class: at.ifc_class || '', zone: at.zone_label || '',
       section: [at.section_num, at.section_title].filter(Boolean).join(' '), system: at.system || '',
       slot: p.slot, slot_label: at.slot_label || '',
       component: at.component_name || '', location_at_capture: at.location_text || '',
@@ -38,8 +38,16 @@ export function componentRegister() {
   return allObjects().map(o => {
     const sec = sectionCfg(o.section), sy = sysCfg(o.system);
     const ph = photosOf('object', o.field_id);
+    const et = elementTypeOf(o), m3 = model3dState(o), ed = linkEdges();
     return {
-      field_id: o.field_id, key: `${A.S.object_code} / ${o.field_id}`,
+      field_id: o.field_id, uid: o.uid || '', key: `${A.S.object_code} / ${o.field_id}`,
+      element_type: et ? et.label : (o.element && o.element.type_other) || '', ifc_class: et ? et.ifc : '',
+      manufacturer: o.plate.manufacturer, model: o.plate.model, serial: o.plate.serial, rating: o.plate.rating,
+      dn_mm: o.dims.dn_mm, length_m: o.dims.length_m, size_mm: o.dims.size, position_note: o.dims.position_note, scale_ref_in_photo: o.dims.scale_ref || '',
+      receives_from: ed.filter(e => e.type === 'feeds' && e.dst === o.field_id).map(e => e.src),
+      feeds_to: ed.filter(e => e.type === 'feeds' && e.src === o.field_id).map(e => e.dst),
+      connected_to: ed.filter(e => e.type === 'connected' && (e.src === o.field_id || e.dst === o.field_id)).map(e => (e.src === o.field_id ? e.dst : e.src)),
+      has_type: m3.type, has_links: m3.links, has_dimensions: m3.dims, has_nameplate: m3.plate,
       system: o.system, system_label: sy.label, priority: sy.priority, section: sec.num,
       status: o.status, void_reason: o.void_reason || '',
       component_state: o.component.state || '', component_name: o.component.name || '',
@@ -65,8 +73,12 @@ export function monitoringMap() {
   const comp = o => {
     const ph = photosOf('object', o.field_id);
     const cover = ph.find(p => p.slot === 'whole_object') || ph[0];
+    const et = elementTypeOf(o);
     return {
-      field_id: o.field_id, system: o.system, system_label: sysCfg(o.system).label, priority: sysCfg(o.system).priority,
+      field_id: o.field_id, uid: o.uid || '', element_type: et ? et.label : (o.element && o.element.type_other) || '', ifc_class: et ? et.ifc : '',
+      nameplate: { ...o.plate }, dimensions: { dn_mm: o.dims.dn_mm, length_m: o.dims.length_m, size_mm: o.dims.size, position_note: o.dims.position_note, scale_ref_in_photo: o.dims.scale_ref },
+      ready_3d: model3dState(o),
+      system: o.system, system_label: sysCfg(o.system).label, priority: sysCfg(o.system).priority,
       name: o.component.name || (o.component.state === 'UNKNOWN' ? 'UNKNOWN' : sysCfg(o.system).label),
       component_state: o.component.state, landmark: o.location.landmark || '',
       monitoring: {
@@ -118,20 +130,33 @@ export function monitoringMap() {
         const rid = `${lid}/${r.room}`;
         nodes.push({ id: rid, type: 'room', label: r.room }); edges.push({ from: lid, to: rid, type: 'contains' });
         r.components.forEach(c => {
-          nodes.push({ id: c.field_id, type: 'component', label: c.name, system: c.system }); edges.push({ from: rid, to: c.field_id, type: 'contains' });
+          nodes.push({ id: c.field_id, type: 'component', label: c.name, system: c.system, uid: c.uid, element_type: c.element_type, ifc_class: c.ifc_class }); edges.push({ from: rid, to: c.field_id, type: 'contains' });
           c.photo_ids.forEach(pid => { edges.push({ from: c.field_id, to: pid, type: 'evidenced_by' }); });
         });
       });
     });
   });
+  const connections = linkEdges().map(e => ({ from: e.src, to: e.dst, type: e.type, note: e.note }));
+  connections.forEach(e => edges.push({ from: e.from, to: e.to, type: e.type, note: e.note }));
   A.PH.forEach(p => { if (!p.void) nodes.push({ id: p.photo_id, type: 'photo', label: attrOf(p).slot_label || p.slot }); });
   return {
     kind: 'hm-field-monitoring-map', generated_at: nowISO(),
     object: { code: S.object_code, address: S.address }, revision: S.revision, status: S.status,
-    entrances, areas, comms_power: comms,
+    entrances, areas, comms_power: comms, connections,
     counters: { components: objs.length, photos: [...A.PH.values()].filter(p => !p.void).length },
     graph: { nodes, edges },
   };
+}
+
+// ---------- реестр связей ----------
+export function connectionRegister() {
+  const idx = Object.fromEntries(allObjects().map(o => [o.field_id, o]));
+  const lab = id => (idx[id] ? idx[id].component.name || '' : '');
+  return linkEdges().map(e => ({
+    from_field_id: e.src, from_uid: idx[e.src].uid || '', from_name: lab(e.src),
+    to_field_id: e.dst, to_uid: idx[e.dst].uid || '', to_name: lab(e.dst),
+    type: e.type === 'feeds' ? 'передаёт (направленная)' : 'соединён (без направления)', note: e.note,
+  }));
 }
 
 // ---------- CSV ----------
@@ -148,7 +173,7 @@ export function toCSV(rows) {
 
 // ---------- блок для печатного протокола ----------
 export function registryReportHTML(gallery) {
-  const comps = componentRegister(), phs = photoRegister().filter(p => !p.void), map = monitoringMap();
+  const comps = componentRegister(), phs = photoRegister().filter(p => !p.void), map = monitoringMap(), conns = connectionRegister();
   const tree = map.entrances.map(e => `<h3>${esc(e.entrance)}</h3>${e.levels.map(l => `<p class="m"><b>${esc(l.level)}</b></p>${l.rooms.map(r =>
     `<div class="obj"><b>${esc(r.room)}</b><table class="t">${r.components.map(c => `<tr><td><b>${esc(c.field_id)}</b><br>${esc(c.system_label)}</td>
     <td>${esc(c.name)}${c.landmark ? `<br><span class="m">${esc(c.landmark)}</span>` : ''}</td>
@@ -156,8 +181,9 @@ export function registryReportHTML(gallery) {
     <tr><td colspan="3">${gallery(c.photo_ids)}</td></tr>`).join('')}</table></div>`).join('')}`).join('')}`).join('');
   const areas = map.areas.map(a => `<p><b>${esc(a.label)}</b>${a.access ? ' — доступ ' + esc(LBL.access[a.access] || a.access) : ''}</p>${gallery(a.photo_ids)}`).join('');
   return `<section><h2>СХЕМА МОНИТОРИНГА (MONITORING MAP)</h2><p class="m">Расположение компонентов: подъезд → уровень → помещение. Фото привязаны к компонентам.</p>${tree || '<p>Компонентов нет.</p>'}<h3>Общие виды и зоны</h3>${areas}</section>
-  <section><h2>РЕЕСТР КОМПОНЕНТОВ (COMPONENT REGISTER)</h2><table class="t"><tr><th>Field ID</th><th>Система</th><th>Компонент</th><th>Локация</th><th>Статус</th><th>Фото</th></tr>${comps.map(c =>
-    `<tr><td>${esc(c.field_id)}</td><td>${esc(c.system_label)}</td><td>${esc(c.component_name || c.component_state || '—')}</td><td>${esc([c.entrance, c.level, c.room].filter(Boolean).join(' · '))}${c.landmark ? ' — ' + esc(c.landmark) : ''}</td><td>${c.status === 'void' ? 'VOID' : c.evidence_full ? 'полное evidence' : 'не полностью'}</td><td>${c.photo_count}</td></tr>`).join('')}</table></section>
+  <section><h2>РЕЕСТР КОМПОНЕНТОВ (COMPONENT REGISTER)</h2><table class="t"><tr><th>Field ID</th><th>Система</th><th>Компонент</th><th>Тип (IFC)</th><th>Локация</th><th>Статус</th><th>Фото</th></tr>${comps.map(c =>
+    `<tr><td>${esc(c.field_id)}</td><td>${esc(c.system_label)}</td><td>${esc(c.component_name || c.component_state || '—')}</td><td>${esc(c.element_type || '—')}${c.ifc_class ? '<br><span class="m">' + esc(c.ifc_class) + '</span>' : ''}</td><td>${esc([c.entrance, c.level, c.room].filter(Boolean).join(' · '))}${c.landmark ? ' — ' + esc(c.landmark) : ''}</td><td>${c.status === 'void' ? 'VOID' : c.evidence_full ? 'полное evidence' : 'не полностью'}</td><td>${c.photo_count}</td></tr>`).join('')}</table></section>
+  <section><h2>СВЯЗИ КОМПОНЕНТОВ</h2>${conns.length ? `<table class="t"><tr><th>От</th><th>Связь</th><th>К</th><th>Примечание</th></tr>${conns.map(c => `<tr><td>${esc(c.from_field_id)} ${esc(c.from_name)}</td><td>${esc(c.type)}</td><td>${esc(c.to_field_id)} ${esc(c.to_name)}</td><td>${esc(c.note)}</td></tr>`).join('')}</table>` : '<p>Связи между компонентами не указаны.</p>'}</section>
   <section><h2>РЕЕСТР ФОТО</h2><table class="t"><tr><th>Photo ID</th><th>К чему относится</th><th>Кадр</th><th>Где</th><th>Снято</th></tr>${phs.map(p =>
     `<tr><td>${esc(p.photo_id)}</td><td>${esc(p.field_id || p.zone || p.section)}</td><td>${esc(p.slot_label)}</td><td>${esc(p.location_at_capture || '—')}</td><td>${esc(fmtDT(p.captured_at))}, ${esc(p.author)}</td></tr>`).join('')}</table></section>`;
 }
@@ -170,6 +196,7 @@ const lab = (l, v) => `${l} ${v ? esc(v) : '—'}`;
 function compBlock(c) {
   return `<div class="cmp"><a class="cmp-h" href="#/obj/${esc(c.field_id)}">${tag(c)}<b>${esc(c.field_id)}</b> ${esc(c.name)}</a>
     ${c.landmark ? `<div class="hint">${esc(c.landmark)}</div>` : ''}
+    ${c.element_type ? `<div class="hint">Тип: ${esc(c.element_type)}${c.ifc_class ? ' · ' + esc(c.ifc_class) : ''}</div>` : ''}
     <div class="mon"><span>${lab('220 В', c.monitoring.power_220v)}</span><span>${lab('сеть', c.monitoring.mobile_signal)}</span><span>${lab('место наблюдения', c.monitoring.potential_observation_location)}</span></div>
     ${thumbs(c.photo_ids, { empty: 'Фото пока нет' })}</div>`;
 }
@@ -188,7 +215,7 @@ function compTab() {
   return `<p class="hint">Реестр компонентов: все Field Objects, включая VOID. ${rows.length ? '' : 'Пока пусто.'}</p>` + rows.map(c =>
     `<a class="reg-i${c.status === 'void' ? ' void' : ''}" href="#/obj/${esc(c.field_id)}"><span class="fid">${esc(c.field_id)}</span>
     <span class="mt"><b>${esc(c.component_name || c.component_state || c.system_label)}</b><small>${esc([c.entrance, c.level, c.room].filter(Boolean).join(' · ')) || 'локация не указана'}</small>
-    <small>фото: ${c.photo_count}</small></span>${pill(c.status === 'void' ? 'absent' : c.evidence_full ? 'closed' : 'in_progress', c.status === 'void' ? 'VOID' : c.evidence_full ? 'полное' : 'не полностью')}</a>`).join('');
+    <small>${esc(c.element_type || 'тип не выбран')} · фото: ${c.photo_count}</small><small>для 3D: ${c.has_type ? '✓' : '—'} тип ${c.has_links ? '✓' : '—'} связи ${c.has_dimensions ? '✓' : '—'} размеры ${c.has_nameplate ? '✓' : '—'} шильдик</small></span>${pill(c.status === 'void' ? 'absent' : c.evidence_full ? 'closed' : 'in_progress', c.status === 'void' ? 'VOID' : c.evidence_full ? 'полное' : 'не полностью')}</a>`).join('');
 }
 function photoTab() {
   const rows = photoRegister();
@@ -210,6 +237,7 @@ export function screenRegistry(q) {
     <section class="card"><h2>Выгрузка</h2><p class="hint">Эти же файлы автоматически входят в итоговый пакет.</p>
     <div class="row"><button class="btn ghost" data-act="reg-csv-comp">Реестр компонентов (CSV)</button>
     <button class="btn ghost" data-act="reg-csv-photo">Реестр фото (CSV)</button>
+    <button class="btn ghost" data-act="reg-csv-conn">Связи (CSV)</button>
     <button class="btn ghost" data-act="reg-json-map">Схема (JSON)</button></div></section>`,
   };
 }
@@ -219,5 +247,6 @@ export function registerRegistryActions() {
   const stamp = () => nowISO().slice(0, 10);
   a['reg-csv-comp'] = () => { download(new Blob([toCSV(componentRegister())], { type: 'text/csv;charset=utf-8' }), `${A.S.object_code}_component_register_${stamp()}.csv`); toast('Реестр компонентов скачан'); };
   a['reg-csv-photo'] = () => { download(new Blob([toCSV(photoRegister())], { type: 'text/csv;charset=utf-8' }), `${A.S.object_code}_photo_register_${stamp()}.csv`); toast('Реестр фото скачан'); };
+  a['reg-csv-conn'] = () => { download(new Blob([toCSV(connectionRegister())], { type: 'text/csv;charset=utf-8' }), `${A.S.object_code}_connections_${stamp()}.csv`); toast('Реестр связей скачан'); };
   a['reg-json-map'] = () => { download(new Blob([JSON.stringify(monitoringMap(), null, 2)], { type: 'application/json' }), `${A.S.object_code}_monitoring_map_${stamp()}.json`); toast('Схема скачана'); };
 }

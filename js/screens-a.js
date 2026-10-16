@@ -4,6 +4,7 @@ import {
   sectionStatus, sectionProgress, sectionBlockers, closeSection, reopenSection, addObject, voidObject, restoreObject,
   objectBlockers, objectStatus, slotState, slotPhotos, photosOf, readingDefs, entranceOptions, markObjectNoAccess,
   addZone, setAt, voidPhoto, togglePeople, photoURL, photoRecord, commsRows, gaps, locString, hasReading,
+  elementTypes, elementTypeOf, linkRels, addLink, removeLink, linkEdges, model3dState,
 } from './model.js';
 import {
   ui, dis, chips, tinput, sel, field, safetyBanner, checklist, thumbs, hydrate, toast, modal, closeModal, askText,
@@ -251,7 +252,7 @@ export function screenObject(fid, tab) {
   const unsetItems = sec.items ? sec.items.filter(i => !o.items[i.id]).length : 0;
   const miss = p1 ? A.cfg.photo_slots.filter(s => slotState(o, s.id) === 'missing').length : 0;
   const base = `objects.${fid}`;
-  const tabs = [['card', 'Карточка', b.filter(x => x.tab === 'card').length], ['list', 'Чек-лист', unsetItems], ['photo', 'Фото', miss]]
+  const tabs = [['card', 'Карточка', b.filter(x => x.tab === 'card').length], ['list', 'Чек-лист', unsetItems], ['photo', 'Фото', miss], ['model', 'Для 3D', 0]]
     .filter(t => t[0] !== 'list' || (sec.items && sec.items.length));
   const tabsHtml = `<div class="tabs" role="tablist">${tabs.map(([k, l, n]) =>
     `<a role="tab" class="${tab === k ? 'on' : ''}" href="#/obj/${esc(fid)}?t=${k}" aria-selected="${tab === k}">${l}${n ? `<i class="badge">${n}</i>` : ''}</a>`).join('')}</div>`;
@@ -294,6 +295,8 @@ export function screenObject(fid, tab) {
       ${b.length ? `<b>Что ещё не заполнено (${b.length}):</b><ul class="miss">${b.map(x => `<li><a href="#/obj/${esc(fid)}?t=${x.tab}">${esc(x.text)}</a></li>`).join('')}</ul>` : '<div class="done"><b>✓ Объект заполнен полностью</b></div>'}
       ${o.access === 'NO' ? `<button class="btn ghost" data-act="obj-noaccess" data-id="${esc(fid)}"${dis()}>Нет доступа: отметить так всё нерешённое</button><p class="hint">Пункты чек-листа станут «нет доступа», а кадры — «не применимо: нет доступа». Это явное действие, его можно отменить вручную.</p>` : ''}
       ${o.status === 'active' ? `<button class="btn danger ghost" data-act="obj-void" data-id="${esc(fid)}"${dis()}>Создан по ошибке (VOID)</button>` : ''}</section>`;
+  } else if (tab === 'model') {
+    body += modelTab(o);
   } else if (tab === 'list') {
     body += `<section class="card"><p class="hint">${esc(A.cfg.status_legend)}</p>${checklist(sec.items, `${base}.items`, o.items)}</section>`;
   } else {
@@ -303,6 +306,51 @@ export function screenObject(fid, tab) {
     title: o.field_id, sub: `${sys.label} · ${p1 ? 'P1' : 'P2'}`, back: `#/sec/${o.section}`, nav: true, safety: true,
     html: tabsHtml + body,
   };
+}
+
+const REL_LBL = id => (linkRels().find(r => r.id === id) || {}).label || id;
+
+// Вкладка «Для 3D»: данные, из которых строится модель инженерных систем. Всё необязательно.
+function modelTab(o) {
+  const fid = o.field_id, base = `objects.${fid}`, d = dis();
+  const st = model3dState(o);
+  const types = elementTypes(o.system), cur = elementTypeOf(o);
+  const typeSel = `<select class="in" data-path="${esc(base)}.element.type" data-sel="1"${d}><option value="">— выберите —</option>${types.map(t =>
+    `<option value="${esc(t.id)}"${t.id === o.element.type ? ' selected' : ''}>${esc(t.label)}</option>`).join('')}</select>`;
+  const mark = ok => (ok ? '✓' : '—');
+  const out = o.links.map((l, i) => {
+    const t = A.S.objects[l.ref];
+    return `<div class="rel-row"><span><b>${esc(REL_LBL(l.rel))}</b> ${esc(l.ref)}${t && t.component.name ? ' · ' + esc(t.component.name) : ''}${t && t.status === 'void' ? ' (VOID)' : ''}${l.note ? `<br><small>${esc(l.note)}</small>` : ''}</span>
+      <button class="btn ghost sm" data-act="link-del" data-id="${esc(fid)}" data-i="${i}"${d}>Убрать</button></div>`;
+  }).join('');
+  const inc = linkEdges().filter(e => (e.dst === fid || (e.type === 'connected' && e.src === fid)) && !o.links.some(l => l.ref === (e.src === fid ? e.dst : e.src)));
+  const incHtml = inc.length ? `<p class="hint">Указано в других объектах: ${inc.map(e => esc(e.src === fid ? e.dst : e.src) + (e.type === 'feeds' ? ' → питает этот' : ' · соединён')).join('; ')}</p>` : '';
+  return `<section class="card"><h2>Идентификатор</h2>
+    <dl class="kv2"><dt>Field ID</dt><dd>${esc(fid)}</dd><dt>Постоянный ID</dt><dd><code class="uid">${esc(o.uid)}</code></dd></dl>
+    <p class="hint">Постоянный ID не меняется. Он связывает этот элемент, его фото и запись в 3D-модели.</p></section>
+  <section class="card"><h2>Тип элемента</h2>
+    ${field('Что это за элемент', typeSel, { hint: cur ? `Класс в BIM (IFC): ${cur.ifc}` : 'Выбирается из справочника. Если не нашли, выберите «Другое» и опишите.' })}
+    ${o.element.type === 'other' ? field('Опишите тип', tinput(`${base}.element.type_other`, o.element.type_other, { ph: 'Например: компенсатор' })) : ''}</section>
+  <section class="card"><h2>Шильдик</h2>
+    ${field('Производитель', tinput(`${base}.plate.manufacturer`, o.plate.manufacturer, { ph: 'как на табличке' }))}
+    ${field('Модель / тип', tinput(`${base}.plate.model`, o.plate.model, { ph: 'как на табличке' }))}
+    ${field('Серийный номер', tinput(`${base}.plate.serial`, o.plate.serial, { ph: 'как на табличке' }))}
+    ${field('Параметры (мощность, напор, Ду, Ру…)', tinput(`${base}.plate.rating`, o.plate.rating, { ph: 'как на табличке' }))}
+    <p class="hint">Пишите ровно то, что на табличке. Сам шильдик снимите на вкладке «Фото», кадр «Шильдик».</p></section>
+  <section class="card"><h2>Размеры и положение</h2>
+    ${field('Диаметр Ду, мм', tinput(`${base}.dims.dn_mm`, o.dims.dn_mm, { ph: 'например: 50' }))}
+    ${field('Длина участка, м', tinput(`${base}.dims.length_m`, o.dims.length_m, { ph: 'например: 3.5' }))}
+    ${field('Габариты Д×Ш×В, мм', tinput(`${base}.dims.size`, o.dims.size, { ph: 'например: 600×400×800' }))}
+    ${field('Положение в помещении', tinput(`${base}.dims.position_note`, o.dims.position_note, { area: true, rows: 2, ph: 'От двери 2 м, высота от пола 1,5 м' }))}
+    ${field('В кадре есть эталон масштаба (рулетка, линейка)', chips(`${base}.dims.scale_ref`, [['YES', 'YES'], ['NO', 'NO']], o.dims.scale_ref))}
+    <p class="hint">Размеры нужны для 3D. Лучше измеренные, но допустима оценка. Тогда напишите «~».</p></section>
+  <section class="card"><h2>Связи с другими элементами</h2>
+    ${out || '<p class="hint">Связей пока нет. Укажите, откуда элемент получает ресурс и куда его передаёт.</p>'}
+    ${incHtml}
+    <button class="btn" data-act="link-add" data-id="${esc(fid)}"${d}>+ Добавить связь</button></section>
+  <section class="card"><h2>Что собрано для 3D</h2>
+    <div class="mon"><span>${mark(st.type)} тип</span><span>${mark(st.links)} связи</span><span>${mark(st.dims)} размеры</span><span>${mark(st.plate)} шильдик</span></div>
+    <p class="hint">Эти поля не мешают закрыть раздел. Чем полнее, тем точнее модель.</p></section>`;
 }
 
 function photoTab(o, p1) {
@@ -435,6 +483,24 @@ export function registerScreenActions() {
     const fid = addObject(el.dataset.system);
     if (fid) ui.go(`#/obj/${fid}?t=card`);
   };
+  a['link-add'] = el => {
+    const fid = el.dataset.id;
+    const others = activeObjects(x => x.field_id !== fid);
+    if (!others.length) { toast('Нет других объектов для связи'); return; }
+    modal(`<h3>Добавить связь</h3>
+      <p class="hint">Элемент ${esc(fid)}. Связь запишется в его карточку и появится на схеме.</p>
+      <label class="fl">Как связан<select class="in" id="lk-rel">${linkRels().map(r => `<option value="${esc(r.id)}">${esc(r.label)}</option>`).join('')}</select></label>
+      <label class="fl">С каким элементом<select class="in" id="lk-ref">${others.map(x => `<option value="${esc(x.field_id)}">${esc(x.field_id)} · ${esc(x.component.name || sysCfg(x.system).label)}</option>`).join('')}</select></label>
+      <label class="fl">Примечание<input class="in" id="lk-note" type="text" placeholder="например: через задвижку 2" autocomplete="off"></label>
+      <div class="row"><button class="btn ghost" data-act="modal-close">Отмена</button><button class="btn" data-act="link-save" data-id="${esc(fid)}">Добавить</button></div>`);
+  };
+  a['link-save'] = el => {
+    const ok = addLink(el.dataset.id, document.getElementById('lk-rel').value, document.getElementById('lk-ref').value, document.getElementById('lk-note').value);
+    closeModal();
+    toast(ok ? 'Связь добавлена' : 'Такая связь уже есть');
+    ui.render(true);
+  };
+  a['link-del'] = el => { removeLink(el.dataset.id, +el.dataset.i); ui.render(true); };
   a['obj-void'] = async el => {
     const r = await askText({ title: 'Объект создан по ошибке', label: 'Объект получит статус VOID. Номер не будет использован повторно, запись останется в журнале. Что произошло?', ok: 'Пометить VOID' });
     if (r && voidObject(el.dataset.id, r)) { toast('Объект помечен VOID'); ui.render(true); }

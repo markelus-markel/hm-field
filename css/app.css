@@ -308,3 +308,11 @@ input, textarea, select, canvas { scroll-margin-top: calc(var(--hh, 57px) + 76px
 .reg-i .mt, .reg-p .mt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .reg-i small, .reg-p small { color: var(--mute); }
 .reg-p { display: flex; gap: 10px; padding: 10px; margin: 6px 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+
+/* вкладка «Для 3D» */
+.rel-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.rel-row small { color: var(--mute); }
+.btn.sm { min-height: 38px; padding: 6px 12px; font-size: 14px; flex: none; }
+.uid { font-size: 12px; word-break: break-all; }
+.fl { display: block; margin: 10px 0; font-weight: 600; font-size: 14px; }
+.fl .in { display: block; width: 100%; margin-top: 4px; font-weight: 400; }

@@ -8,7 +8,7 @@ import {
   summary, commsRows, sectionStatus, replaceFromBackup,
 } from './model.js';
 import { esc, LBL, STATUS, fmtDT } from './util.js';
-import { photoRegister, componentRegister, monitoringMap, toCSV, registryReportHTML, attrOf } from './registry.js';
+import { photoRegister, componentRegister, connectionRegister, monitoringMap, toCSV, registryReportHTML, attrOf } from './registry.js';
 
 const extOf = mime => ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif' }[mime] || 'jpg');
 const dataURLtoBlob = u => {
@@ -55,7 +55,8 @@ export function surveyJSON(photoFiles = {}, sigFiles = {}) {
       const sec = sectionCfg(o.section);
       const p1 = isP1(o);
       return {
-        field_id: o.field_id, key: `${S.object_code} / ${o.field_id}`,
+        field_id: o.field_id, uid: o.uid || null, key: `${S.object_code} / ${o.field_id}`,
+        element: o.element, nameplate: o.plate, dimensions: o.dims, links: o.links,
         system: o.system, priority: cfg.systems[o.system].priority,
         status: o.status, void_reason: o.void_reason, created_at: o.created_at,
         location: o.location, access: o.access,
@@ -264,6 +265,7 @@ export async function buildPackage(kind, onProgress = () => {}) {
   await add('changelog.json', JSON.stringify(A.log, null, 2));
   onProgress('Реестры и схема');
   await add('registry/component_register.csv', toCSV(componentRegister()));
+  await add('registry/connections.csv', toCSV(connectionRegister()));
   await add('registry/photo_register.csv', toCSV(photoRegister(photoFiles)));
   await add('registry/monitoring_map.json', JSON.stringify(monitoringMap(), null, 2));
   onProgress('Печатный протокол');
