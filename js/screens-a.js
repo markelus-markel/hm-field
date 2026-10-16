@@ -11,6 +11,7 @@ import {
 } from './ui.js';
 import { startStream, stopStream, grabFrame, fromFile, savePhoto } from './camera.js';
 import { esc, LBL, STATUS, fmtDT, fmtTime, fmtBytes } from './util.js';
+import { nextStep, why } from './nav.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 export const camURL = (scope, ref, slot, back) =>
@@ -31,6 +32,8 @@ export function screenStart() {
   return {
     title: 'Обследование', sub: 'HouseMaster Field', nav: false,
     html: `
+    <section class="card why-card"><h2>${esc(cfg.intro.title)}</h2><p>${esc(cfg.intro.lead)}</p><p>${esc(cfg.intro.why)}</p>
+      <a class="btn ghost" href="#/about">Подробнее: что делать и что получится</a></section>
     <section class="card">
       <h2>${esc(cfg.protocol.code)}</h2>
       <dl class="kv2">
@@ -61,6 +64,23 @@ export function screenStart() {
         ? 'Браузер не сообщает объём свободной памяти. Перед выходом на объект убедитесь, что на телефоне есть хотя бы 1 ГБ.'
         : `Свободно примерно <b>${fmtBytes(free)}</b>. ${warn ? `<span class="bad-t">Для ~${A.cfg.limits.expected_photo_mb} МБ фотографий может не хватить — освободите память.</span>` : 'Для ожидаемого объёма фотографий достаточно.'}`;
     },
+  };
+}
+
+// ---------- зачем обследование ----------
+export function screenAbout() {
+  const i = A.cfg.intro, p = A.cfg.protocol;
+  return {
+    title: 'Цель обследования', back: A.S ? '#/map' : '#/', nav: !!A.S,
+    html: `
+    <section class="card"><p class="lead">${esc(i.lead)}</p><p>${esc(i.why)}</p></section>
+    <section class="card"><h2>Партнёры проекта и их роли</h2><dl class="kv2">${i.partners.map(x => `<dt>${esc(x.name)}</dt><dd>${esc(x.role)}</dd>`).join('')}</dl></section>
+    <section class="card"><h2>Что получится в конце</h2><p>${esc(i.output)}</p></section>
+    <section class="card"><h2>Как работать</h2><ol class="steps">${i.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol></section>
+    <section class="card"><h2>Чего не делать</h2><p>${esc(i.dont)}</p></section>
+    <section class="card"><h2>Правило записи</h2><p>${esc(p.rule)}</p>
+      <p class="hint">Цепочка работ: ${esc(p.goal)}.</p></section>
+    <a class="btn big" href="${A.S ? '#/map' : '#/'}">Понятно</a>`,
   };
 }
 
@@ -105,7 +125,7 @@ export function screenAccess() {
   const sec = sectionCfg('CL01'), st = A.S.sections.CL01;
   return {
     title: 'ЧЛ-01 · Объект и доступ', back: '#/map', nav: true,
-    html: `
+    html: `${why(sec)}
     <section class="card"><dl class="kv2"><dt>Объект</dt><dd>${esc(A.S.object_code)} · ${esc(A.S.address)}</dd>
     <dt>Начало</dt><dd>${esc(fmtDT(A.S.started_at))}</dd>
     <dt>Участники</dt><dd>${esc(A.S.inspector.name)} · ${esc(A.S.representative.name)}</dd></dl></section>
@@ -151,6 +171,8 @@ export function screenMap() {
     <section class="card"><div class="split"><div><b>${esc(S.object_code)}</b><div class="hint">${esc(S.address)}</div></div>
     <div class="right"><b>${closed} из ${total}</b><div class="hint">разделов закрыто</div></div></div>
     <div class="prog"><i style="width:${Math.round(closed / total * 100)}%"></i></div></section>
+    ${(() => { const n = nextStep(); return n ? `<a class="next-card" href="${n.href}"><small>Дальше</small><b>${esc(n.num ? n.num + ' · ' : '')}${esc(n.title)}</b><span>${esc(n.label || 'открыть')} ›</span></a>` : '<div class="done"><b>✓ Все шаги выполнены</b>. Осталось выгрузить пакет на экране «Подписи».</div>'; })()}
+    <p class="hint center"><a href="#/about">Зачем это обследование</a></p>
     <div class="map">${secs.filter(s => s.kind !== 'misc').map(card).join('')}</div>
     <div class="map">
       <a class="map-i" href="#/comms"><span class="pr">—</span><span class="mt"><b>ЧЛ-10 · Связь и питание</b><small>зон заполнено: ${commsDone}/${rows.length}</small></span>${pill(commsDone === rows.length ? 'closed' : commsDone ? 'in_progress' : 'not_started', commsDone === rows.length ? 'заполнено' : commsDone ? 'в работе' : 'не начато')}</a>
@@ -214,7 +236,7 @@ export function screenSection(id) {
   return {
     title: `${sec.num} · ${sec.title}`, back: '#/map', nav: true, safety: true,
     sub: `${sec.priority || ''} · ${stt.label}`,
-    html: body + (sec.kind === 'misc' ? '' : closeBlock(id)),
+    html: why(sec) + body + (sec.kind === 'misc' ? '' : closeBlock(id)),
   };
 }
 

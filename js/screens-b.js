@@ -10,6 +10,7 @@ import { fromFile, savePhoto } from './camera.js';
 import { buildPackage, restoreFromZip, reportHTML } from './export.js';
 import { esc, LBL, fmtDT, fmtBytes, download } from './util.js';
 import { storageReport } from './screens-a.js';
+import { why } from './nav.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -34,7 +35,7 @@ export function screenComms() {
   };
   return {
     title: 'ЧЛ-10 · Связь и питание', back: '#/map', nav: true, safety: true,
-    html: `<p class="hint">Значения из карточек объектов подставляются сами, повторно вводить не нужно. Если нужно — исправьте вручную.</p>${rows.map(card).join('')}`,
+    html: `${why(A.cfg.pages.comms)}<p class="hint">Значения из карточек объектов подставляются сами, повторно вводить не нужно. Если нужно — исправьте вручную.</p>${rows.map(card).join('')}`,
   };
 }
 
@@ -56,7 +57,7 @@ export function screenControl() {
   }).join('') : '<div class="done"><b>✓ Пробелов нет</b></div>';
   return {
     title: 'ЧЛ-13 · Контроль перед уходом', back: '#/map', nav: true,
-    html: `<section class="card"><div class="split"><div><b>Проверка по собранным данным</b><div class="hint">Пересчитывается автоматически</div></div>${pill(bad ? 'in_progress' : 'closed', bad ? `не выполнено: ${bad}` : 'всё выполнено')}</div>
+    html: `${why(A.cfg.pages.control)}<section class="card"><div class="split"><div><b>Проверка по собранным данным</b><div class="hint">Пересчитывается автоматически</div></div>${pill(bad ? 'in_progress' : 'closed', bad ? `не выполнено: ${bad}` : 'всё выполнено')}</div>
     <ul class="ctls">${list}</ul></section>
     <section class="card"><h2>Пробелы и причины</h2><p class="hint">Закрыть обследование с пробелами можно, только если по каждому указана причина. Причины попадут в отчёт.</p>${gapHtml}</section>
     <a class="btn big" href="#/summary">К итогу →</a>`,
@@ -86,7 +87,7 @@ export function screenSummary() {
   const mats = cfg.materials.map(m => `<button type="button" class="chip${S.closure.materials[m.id] ? ' on' : ''}" data-act="toggle" data-path="closure.materials.${m.id}"${dis()}>${esc(m.label)}</button>`).join('');
   return {
     title: 'Итог и PASS', back: '#/map', nav: true,
-    html: `<section class="card"><h2>Счётчики</h2><div class="stats">
+    html: `${why(A.cfg.pages.summary)}<section class="card"><h2>Счётчики</h2><div class="stats">
       <div><b>${sm.objects_total}</b><span>Field Objects</span></div>
       <div><b>${sm.p1_full}<small>/${sm.p1_total}</small></b><span>P1 с полным evidence</span></div>
       <div><b>${inacc.total}</b><span>недоступных P1</span></div></div>
@@ -145,7 +146,7 @@ export function screenSign() {
   }
   return {
     title: 'Подписи', back: '#/summary', nav: true,
-    html: `${S.status === 'sealed' ? '<div class="blk"><b>Данные закрыты.</b> Соберите обе подписи. После второй подписи обследование станет итоговым.</div>' : ''}${insp}${rep}${tail}`,
+    html: `${why(A.cfg.pages.sign)}${S.status === 'sealed' ? '<div class="blk"><b>Данные закрыты.</b> Соберите обе подписи. После второй подписи обследование станет итоговым.</div>' : ''}${insp}${rep}${tail}`,
     mount: mountPads,
   };
 }

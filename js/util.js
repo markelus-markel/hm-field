@@ -12,7 +12,7 @@ export const LBL = {
   attest: { confirmed: 'Подтверждаю', cannot: 'Не могу подтвердить' },
 };
 
-export const STATUS = { checked: 'проверено', no_access: 'нет доступа', absent: 'отсутствует', tbd: 'TBD' };
+export const STATUS = { checked: 'проверено', no_access: 'нет доступа', absent: 'отсутствует', tbd: 'уточнить' };
 
 export function fmtDT(iso) {
   if (!iso) return '—';

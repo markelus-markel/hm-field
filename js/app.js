@@ -1,9 +1,10 @@
 // Точка входа: маршрутизация, события, регистрация офлайн-службы.
 import { A, initState, setAt, getAt, logTextChange, setRepRemarks, flush, exportState } from './model.js';
-import { ui, hydrate, toast, closeModal, safetyBanner } from './ui.js';
+import { ui, hydrate, toast, closeModal, safetyBanner, modal } from './ui.js';
 import * as SA from './screens-a.js';
 import * as SB from './screens-b.js';
 import { esc } from './util.js';
+import { subnavHtml, pagerHtml, drawerHtml, stripHtml } from './nav.js';
 
 const root = document.getElementById('app');
 
@@ -17,6 +18,7 @@ function routeScreen() {
   const { parts, q } = parseHash();
   const r = parts[0] || '';
   if (r === 'service') return SB.screenService();
+  if (r === 'about') return SA.screenAbout();
   if (!A.S) return SA.screenStart();
   switch (r) {
     case 'access': return SA.screenAccess();
@@ -33,7 +35,7 @@ function routeScreen() {
 
 function indicatorText() {
   if (A.saveState === 'saving') return 'сохраняю…';
-  if (!A.S || A.S.status !== 'signed') return 'сохранено локально';
+  if (!A.S || A.S.status !== 'signed') return 'сохранено';
   return exportState() === 'exported' ? 'выгружено' : 'ожидает выгрузки';
 }
 function updateIndicator() {
@@ -53,9 +55,10 @@ function chrome(scr) {
     ${scr.back ? `<a class="back" href="${scr.back}" aria-label="Назад">‹</a>` : '<span class="back ph"></span>'}
     <div class="tt"><h1>${esc(scr.title)}</h1>${scr.sub ? `<small>${esc(scr.sub)}</small>` : ''}</div>
     <span id="save-ind" class="sind" data-s="saved">${indicatorText()}</span>
+    ${scr.nav && A.S ? '<button type="button" class="menu" data-act="drawer" aria-label="Разделы">☰</button>' : ''}
     <a class="menu" href="#/service" aria-label="Служебное">⋯</a></header>
-    ${lock}${scr.safety ? safetyBanner() : ''}
-    <main>${scr.html}</main>${nav}`;
+    ${lock}${scr.nav && A.S ? stripHtml(hash) + subnavHtml(hash) : ''}${scr.safety ? safetyBanner() : ''}
+    <main>${scr.html}${scr.nav && A.S ? pagerHtml(hash) : ''}</main>${nav}`;
 }
 
 export function render(keepScroll = false) {
@@ -72,6 +75,10 @@ export function render(keepScroll = false) {
   }
   document.title = (scr.title ? scr.title + ' · ' : '') + 'HouseMaster Field';
   hydrate(root);
+  const hd = root.querySelector('header.top');
+  if (hd) document.documentElement.style.setProperty('--hh', hd.offsetHeight + 'px');
+  const st = root.querySelector('.strip'), cur = st && st.querySelector('.on');
+  if (cur) st.scrollLeft = cur.offsetLeft - (st.clientWidth - cur.offsetWidth) / 2;
   window.scrollTo(0, keepScroll ? y : 0);
   if (scr.mount) scr.mount();
   updateIndicator();
@@ -80,6 +87,8 @@ ui.render = render;
 ui.go = h => { if (location.hash === h) render(); else location.hash = h; };
 
 // ---------- события ----------
+ui.actions.drawer = () => modal(drawerHtml(), 'drawer');
+ui.actions['modal-close-go'] = el => { closeModal(); ui.go(el.getAttribute('href')); };
 ui.actions.set = el => {
   const path = el.dataset.path;
   const cur = getAt(A.S, path.split('.'));

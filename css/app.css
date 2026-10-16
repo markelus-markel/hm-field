@@ -247,3 +247,47 @@ body.cam-on #toast { bottom: 150px; }
 .cb { font: inherit; font-weight: 700; color: #fff; background: #fff2; border: 1.5px solid #fff6; border-radius: 12px; min-height: 52px; padding: 0 14px; }
 .shutter { width: 76px; height: 76px; border-radius: 50%; border: 5px solid #fff; background: #fff; box-shadow: inset 0 0 0 5px #000; cursor: pointer; }
 .shutter:active { transform: scale(.94); }
+
+/* навигация и цель обследования */
+button.menu { appearance: none; border: 0; background: transparent; font: inherit; cursor: pointer; }
+.subnav { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; padding: 8px 14px; background: var(--bg); border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.crumbs { color: var(--mute); min-width: 0; overflow-wrap: anywhere; }
+.crumbs span { color: var(--ink); font-weight: 600; }
+.subnav .nx { font-weight: 700; text-decoration: none; white-space: normal; }
+.why { background: color-mix(in srgb, var(--pri) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--pri) 25%, var(--line)); border-radius: var(--radius); padding: 10px 12px; display: grid; gap: 4px; font-size: 14px; }
+.why b { color: var(--pri); }
+.why-card p { margin: 6px 0 10px; }
+.next-card { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 14px; border-radius: var(--radius); background: var(--pri); color: var(--pri-ink); text-decoration: none; }
+.next-card small { grid-column: 1 / -1; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; opacity: .85; }
+.next-card b { font-size: 17px; }
+.next-card span { font-weight: 700; font-size: 14px; }
+.pager { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.pg { display: grid; gap: 1px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); text-decoration: none; color: var(--ink); min-height: 52px; align-content: center; }
+.pg span { font-weight: 700; color: var(--pri); }
+.pg small { color: var(--mute); font-size: 12.5px; }
+.pg.next { text-align: right; grid-column: 2; }
+.pg.prev { grid-column: 1; }
+.drw { display: grid; gap: 6px; margin: 10px 0 14px; max-height: 52vh; overflow-y: auto; }
+.drw-i { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--ink); }
+.drw-i.cur { border-color: var(--pri); box-shadow: inset 3px 0 0 var(--pri); }
+.drw-i .mt { min-width: 0; }
+.lead { font-size: 17px; line-height: 1.45; }
+.steps { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.top .back.ph { display: none; }
+.next-card small { color: inherit; }
+#modal.drawer .sheet > .btn { width: 100%; margin-top: 8px; }
+#modal.drawer .sheet .row { display: grid; gap: 8px; margin: 0; }
+
+/* горизонтальная полоса разделов */
+.strip { position: sticky; top: var(--hh, 57px); z-index: 19; display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 8px 14px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.strip::-webkit-scrollbar { display: none; }
+.sc { flex: 0 0 auto; scroll-snap-align: center; display: grid; gap: 1px; justify-items: center; min-width: 76px; max-width: 120px; padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); text-decoration: none; }
+.sc b { font-size: 14px; white-space: nowrap; }
+.sc small { font-size: 11.5px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sc.ok { border-color: color-mix(in srgb, var(--pri) 55%, var(--line)); }
+.sc.ok b::before { content: '✓ '; color: var(--pri); }
+.sc.na { border-style: dashed; }
+.sc.on { background: var(--pri); border-color: var(--pri); color: var(--pri-ink); }
+.sc.on small, .sc.on.ok b::before { color: inherit; }
+input, textarea, select, canvas { scroll-margin-top: calc(var(--hh, 57px) + 76px); }
+.card > p:first-child { margin-top: 0; }

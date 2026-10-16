@@ -1,7 +1,7 @@
 {
   "name": "HouseMaster Field — полевое обследование",
   "short_name": "HM Field",
-  "description": "Офлайн-протокол полевого обследования AG-CN-SUTO-13A-FIELD-01",
+  "description": "Офлайн-протокол полевого обследования объекта SEM-MCD-001",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
