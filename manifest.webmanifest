@@ -1,0 +1,17 @@
+{
+  "name": "HouseMaster Field — полевое обследование",
+  "short_name": "HM Field",
+  "description": "Офлайн-протокол полевого обследования AG-CN-SUTO-13A-FIELD-01",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f1ec",
+  "theme_color": "#0f3d3e",
+  "lang": "ru",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
