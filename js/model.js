@@ -12,7 +12,7 @@ export const A = {
   listeners: new Set(),
 };
 
-export const APP_VERSION = '0.7.1';
+export const APP_VERSION = '0.7.2';
 
 // ---------- общие помощники ----------
 export function nowISO() {
@@ -120,13 +120,13 @@ const TR = { а:'A',б:'B',в:'V',г:'G',д:'D',е:'E',ё:'E',ж:'ZH',з:'Z',и:
 const tr = t => [...String(t).toLowerCase()].map(c => TR[c] ?? (/[a-z0-9-]/.test(c) ? c.toUpperCase() : '')).join('');
 const STREET_WORDS = /^(ул|улица|пр|пр-т|просп|проспект|пер|переулок|мкр|микрорайон|мр|бульвар|б-р|тракт|ш|шоссе|пл|площадь|наб|набережная|дом|д|№)\.?$/i;
 export function deriveObject(address) {
-  const s = String(address || '').trim().replace(/\s+/g, ' ');
+  const s = String(address || '').trim().replace(/(^|[\s,])(ул|пр|пр-т|просп|пер|мкр|мр|б-р|ш|пл|наб|г|д)\.(?=\S)/gi, '$1$2. ').replace(/(^|[\s,])(дом|д)(?=\d)/gi, '$1$2 ').replace(/\s+/g, ' ');
   const m = s.match(/(\d+\s?[A-Za-zА-Яа-яЁё]?(?:\s?\/\s?\d+)?)\s*$/);
   if (!m) return { ok: false, error: 'Укажите номер дома в конце адреса, например: г. Семей, пр. Шакарима, 13А' };
   const house = tr(m[1].replace(/\s/g, '').replace('/', '-'));
-  const head = s.slice(0, m.index).replace(/[,\s]+$/, '');
+  const head = s.slice(0, m.index).replace(/[,\s]+$/, '').replace(/[,\s]*(дом|д|№)\.?$/i, '').replace(/[,\s]+$/, '');
   const parts = head.split(',').map(x => x.trim()).filter(Boolean);
-  const isCity = x => /^(г|город)\.?\s/i.test(x);
+  const isCity = x => /^(г\.\s*|г\s+|город\s+)/i.test(x);
   const city = parts.find(isCity) || (parts.length > 1 ? parts[0] : '');
   const streetPart = [...parts].reverse().find(x => x !== city) || '';
   const words = (x) => x.split(/\s+/).filter(w => !STREET_WORDS.test(w) && /[A-Za-zА-Яа-яЁёӘәІіҢңҒғҮүҰұҚқӨөҺһ]/.test(w));
@@ -135,7 +135,7 @@ export function deriveObject(address) {
   const lead = tr(sw[0]).slice(0, sw[0].toLowerCase().startsWith('щ') ? 2 : 2);
   const first = tr(sw[0][0]);
   const prefix = (first || lead || 'OBJ') + house;
-  const cw = words(city.replace(/^(г|город)\.?\s*/i, ''));
+  const cw = words(city.replace(/^(г\.\s*|г\s+|город\s+)/i, ''));
   const city3 = cw.length ? tr(cw[0]).slice(0, 3).padEnd(3, 'X') : 'OBJ';
   return { ok: true, id_prefix: prefix, object_code: `${city3}-${prefix}`, address: s };
 }
