@@ -51,7 +51,7 @@ export function screenHome() {
       ${nx ? `<a class="btn ghost" href="${nx.href}">Дальше: ${esc(nx.num ? nx.num + ' · ' : '')}${esc(nx.title)}</a>` : ''}</section>`;
   } else {
     main = `<section class="card"><h2>Новое обследование</h2>
-      <dl class="kv2"><dt>Объект</dt><dd>${esc(cfg.object.code)}</dd><dt>Адрес</dt><dd>${esc(cfg.object.address)}</dd><dt>Протокол</dt><dd>${esc(cfg.protocol.code)}</dd></dl>
+      <p class="hint">Адрес вводится вручную, здание обязательно привязывается к карте.</p><dl class="kv2"><dt>Протокол</dt><dd>${esc(cfg.protocol.code)}</dd></dl>
       <a class="btn big" href="#/new">Начать обследование</a>
       <button class="btn ghost" data-act="restore-pick">Восстановить из резервной копии…</button></section>`;
   }

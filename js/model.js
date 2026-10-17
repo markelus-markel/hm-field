@@ -12,7 +12,7 @@ export const A = {
   listeners: new Set(),
 };
 
-export const APP_VERSION = '0.6.0';
+export const APP_VERSION = '0.7.0';
 
 // ---------- общие помощники ----------
 export function nowISO() {
@@ -114,15 +114,43 @@ export async function clearProfile() {
 }
 
 // ---------- создание обследования ----------
-export function createSurvey({ inspector, representative, representative_org }) {
+// Коды нового здания из адреса: префикс номеров = латиница от первой буквы улицы + номер дома (Шакарима, 13А -> SH13A),
+// код объекта = код города (3 буквы) + префикс (г. Семей -> SEM-SH13A).
+const TR = { а:'A',б:'B',в:'V',г:'G',д:'D',е:'E',ё:'E',ж:'ZH',з:'Z',и:'I',й:'Y',к:'K',л:'L',м:'M',н:'N',о:'O',п:'P',р:'R',с:'S',т:'T',у:'U',ф:'F',х:'KH',ц:'TS',ч:'CH',ш:'SH',щ:'SH',ъ:'',ы:'Y',ь:'',э:'E',ю:'YU',я:'YA',ә:'A',і:'I',ң:'N',ғ:'G',ү:'U',ұ:'U',қ:'K',ө:'O',һ:'H' };
+const tr = t => [...String(t).toLowerCase()].map(c => TR[c] ?? (/[a-z0-9-]/.test(c) ? c.toUpperCase() : '')).join('');
+const STREET_WORDS = /^(ул|улица|пр|пр-т|просп|проспект|пер|переулок|мкр|микрорайон|мр|бульвар|б-р|тракт|ш|шоссе|пл|площадь|наб|набережная|дом|д|№)\.?$/i;
+export function deriveObject(address) {
+  const s = String(address || '').trim().replace(/\s+/g, ' ');
+  const m = s.match(/(\d+\s?[A-Za-zА-Яа-яЁё]?(?:\s?\/\s?\d+)?)\s*$/);
+  if (!m) return { ok: false, error: 'Укажите номер дома в конце адреса, например: г. Семей, пр. Шакарима, 13А' };
+  const house = tr(m[1].replace(/\s/g, '').replace('/', '-'));
+  const head = s.slice(0, m.index).replace(/[,\s]+$/, '');
+  const parts = head.split(',').map(x => x.trim()).filter(Boolean);
+  const isCity = x => /^(г|город)\.?\s/i.test(x);
+  const city = parts.find(isCity) || (parts.length > 1 ? parts[0] : '');
+  const streetPart = [...parts].reverse().find(x => x !== city) || '';
+  const words = (x) => x.split(/\s+/).filter(w => !STREET_WORDS.test(w) && /[A-Za-zА-Яа-яЁёӘәІіҢңҒғҮүҰұҚқӨөҺһ]/.test(w));
+  const sw = words(streetPart);
+  if (!sw.length) return { ok: false, error: 'Укажите улицу перед номером дома' };
+  const lead = tr(sw[0]).slice(0, sw[0].toLowerCase().startsWith('щ') ? 2 : 2);
+  const first = tr(sw[0][0]);
+  const prefix = (first || lead || 'OBJ') + house;
+  const cw = words(city.replace(/^(г|город)\.?\s*/i, ''));
+  const city3 = cw.length ? tr(cw[0]).slice(0, 3).padEnd(3, 'X') : 'OBJ';
+  return { ok: true, id_prefix: prefix, object_code: `${city3}-${prefix}`, address: s };
+}
+
+export function createSurvey({ inspector, representative, representative_org, address, geo }) {
   const cfg = A.cfg;
+  const dv = deriveObject(address);
+  if (!dv.ok) throw new Error(dv.error);
   const S = {
     schema_version: cfg.schema_version,
     protocol_code: cfg.protocol.code,
     protocol_version: cfg.protocol.version,
-    object_code: cfg.object.code,
-    address: cfg.object.address,
-    id_prefix: cfg.object.id_prefix,
+    object_code: dv.object_code,
+    address: dv.address,
+    id_prefix: dv.id_prefix,
     revision: 1,
     revision_note: '',
     status: 'draft',
@@ -132,7 +160,9 @@ export function createSurvey({ inspector, representative, representative_org }) 
       : { name: inspector.name.trim(), position: inspector.position || '', org: inspector.org || '', profile_id: inspector.profile_id || null },
     representative: { name: representative.trim(), org: (representative_org || '').trim() },
     entrances_count: null,
-    geo: null,
+    geo: geo ? { lat: +Number(geo.lat).toFixed(6), lng: +Number(geo.lng).toFixed(6), accuracy_m: geo.accuracy_m == null ? null : Math.round(geo.accuracy_m),
+      source: ['gps', 'pin', 'manual'].includes(geo.source) ? geo.source : 'manual', set_at: nowISO(), set_by: '',
+      ...(geo.gps_fix ? { gps_fix: geo.gps_fix, pin_offset_m: geo.pin_offset_m ?? null } : {}) } : null,
     zones: {},
     sections: {},
     objects: {},
@@ -155,7 +185,9 @@ export function createSurvey({ inspector, representative, representative_org }) 
   A.S = S;
   A.PH = new Map();
   A.log = [];
-  addLog({ kind: 'survey_created' });
+  if (S.geo) S.geo.set_by = S.inspector.name;
+  addLog({ kind: 'survey_created', object_code: S.object_code, id_prefix: S.id_prefix });
+  if (S.geo) addLog({ kind: 'geo_set', old: null, new: { lat: S.geo.lat, lng: S.geo.lng, source: S.geo.source }, accuracy_m: S.geo.accuracy_m });
   return S;
 }
 

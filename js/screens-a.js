@@ -4,7 +4,7 @@ import {
   sectionStatus, sectionProgress, sectionBlockers, closeSection, reopenSection, addObject, voidObject, restoreObject,
   objectBlockers, objectStatus, slotState, slotPhotos, photosOf, readingDefs, entranceOptions, markObjectNoAccess,
   addZone, setAt, voidPhoto, togglePeople, photoURL, photoRecord, commsRows, gaps, locString, hasReading,
-  elementTypes, elementTypeOf, linkRels, addLink, removeLink, linkEdges, model3dState,
+  elementTypes, elementTypeOf, linkRels, addLink, removeLink, linkEdges, model3dState, deriveObject,
 } from './model.js';
 import {
   ui, dis, chips, tinput, sel, field, safetyBanner, checklist, thumbs, hydrate, toast, modal, closeModal, askText,
@@ -14,6 +14,7 @@ import { startStream, stopStream, grabFrame, fromFile, savePhoto } from './camer
 import { esc, LBL, STATUS, fmtDT, fmtTime, fmtBytes } from './util.js';
 import { nextStep, why } from './nav.js';
 import { attrOf } from './registry.js';
+import { startGeoEditor, resetStartGeo, startGeo } from './geo.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 export const camURL = (scope, ref, slot, back) =>
@@ -29,8 +30,21 @@ export async function storageReport() {
 }
 
 // ---------- старт ----------
+function syncStart() {
+  const addr = $('#f-addr'); if (!addr) return;
+  const dv = deriveObject(addr.value);
+  $('#code-prev').innerHTML = addr.value.trim()
+    ? (dv.ok ? `Код объекта: <b>${esc(dv.object_code)}</b> · префикс номеров: <b>${esc(dv.id_prefix)}</b> (пример: ${esc(dv.id_prefix)}-HV-001)` : `<span class="bad-t">${esc(dv.error)}</span>`)
+    : 'Коды появятся после ввода адреса.';
+  const g = startGeo();
+  const ok = dv.ok && !!g;
+  $('#btn-start').disabled = !ok;
+  $('#start-need').textContent = ok ? '' : 'Для начала нужны: ' + [dv.ok ? null : 'адрес с номером дома', g ? null : 'точка на карте'].filter(Boolean).join(' и ') + '.';
+}
 export function screenStart() {
   const cfg = A.cfg;
+  resetStartGeo();
+  const ge = startGeoEditor(() => syncStart());
   return {
     title: 'Новое обследование', sub: 'HouseMaster Field', back: '#/', nav: false,
     html: `
@@ -39,13 +53,17 @@ export function screenStart() {
     <section class="card">
       <h2>${esc(cfg.protocol.code)}</h2>
       <dl class="kv2">
-        <dt>Объект</dt><dd>${esc(cfg.object.code)}</dd>
-        <dt>Адрес</dt><dd>${esc(cfg.object.address)}</dd>
         <dt>Этап</dt><dd>${esc(cfg.protocol.stage)}</dd>
         <dt>Цель</dt><dd>${esc(cfg.protocol.goal)}</dd>
         <dt>Дата и время</dt><dd>${esc(fmtDT(nowISO()))}<br><small>время начала фиксируется автоматически</small></dd>
       </dl>
     </section>
+    <section class="card">
+      <h2>Здание</h2>
+      ${field('Адрес здания', `<input class="in" id="f-addr" placeholder="г. Семей, пр. Шакарима, 13А" autocomplete="off">`, { req: true, hint: 'Город, улица и номер дома. Адрес вводится вручную и работает без интернета.' })}
+      <div id="code-prev" class="hint">Коды появятся после ввода адреса.</div>
+    </section>
+    ${ge.html}
     <section class="card">
       <h2>Участники</h2>
       ${field('Обследователь', `<div class="static"><b>${esc(A.profile.name)}</b>${[A.profile.position, A.profile.org].filter(Boolean).length ? '<br><small>' + esc([A.profile.position, A.profile.org].filter(Boolean).join(' · ')) + '</small>' : ''}</div>`, { hint: 'Данные из профиля. <a href="#/profile">Изменить</a>' })}
@@ -54,10 +72,14 @@ export function screenStart() {
     </section>
     <section class="card" id="storage-card"><h2>Память телефона</h2><div id="storage-info" class="hint">проверяю…</div></section>
     ${safetyBanner()}
-    <button class="btn big" data-act="start">Начать обследование</button>
+    <p id="start-need" class="hint bad-t">Для начала нужны: адрес и точка на карте.</p>
+    <button class="btn big" id="btn-start" data-act="start" disabled>Начать обследование</button>
     <p class="hint center">Все данные сохраняются на этом телефоне после каждого действия. Интернет нужен только для первой загрузки и для отправки пакета.</p>
     <button class="btn ghost" data-act="restore-pick">Восстановить из резервной копии…</button>`,
     mount: async () => {
+      $('#f-addr').addEventListener('input', syncStart);
+      ge.mount();
+      syncStart();
       const s = await storageReport();
       const need = A.cfg.limits.expected_photo_mb * 1e6;
       const free = s.quota != null ? s.quota - s.usage : null;
@@ -467,10 +489,14 @@ export function registerScreenActions() {
   const a = ui.actions;
   a.start = async () => {
     const rep = $('#f-rep').value, org = $('#f-org').value;
+    const dv = deriveObject($('#f-addr').value);
+    if (!dv.ok) { toast(dv.error, 'err'); return; }
+    const geo = startGeo();
+    if (!geo) { toast('Сначала привяжите здание к карте', 'err'); return; }
     if (!rep.trim()) { toast('Укажите представителя', 'err'); return; }
     const P = A.profile;
     try { await navigator.storage?.persist?.(); } catch { /* необязательно */ }
-    createSurvey({ inspector: { name: P.name, position: P.position, org: P.org, profile_id: P.id }, representative: rep, representative_org: org });
+    createSurvey({ inspector: { name: P.name, position: P.position, org: P.org, profile_id: P.id }, representative: rep, representative_org: org, address: dv.address, geo });
     await flush();
     ui.go('#/access');
   };

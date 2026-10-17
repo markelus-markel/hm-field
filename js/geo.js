@@ -33,6 +33,8 @@ export function geoFeature() {
 // ---------- карта ----------
 let L = null, map = null, marker = null, circle = null;
 let draft = null, saved = null, gpsFix = null;
+let startMode = false, onChange = null;
+export const startGeo = () => (startMode ? draft : null);
 
 function loadLeaflet() {
   if (window.L) return Promise.resolve(window.L);
@@ -53,11 +55,11 @@ const same = (a, b) => !!a && !!b && a.lat === b.lat && a.lng === b.lng;
 function statusHtml() {
   const g = draft;
   if (!g) return '<div class="blk"><b>Привязка не задана</b><br>Встаньте у здания и нажмите «Определить по GPS» или поставьте метку на карте.</div>';
-  const unsaved = !same(saved, g);
+  const unsaved = !startMode && !same(saved, g);
   const warn = [];
   if (g.accuracy_m != null && g.accuracy_m > 30) warn.push(`Точность GPS низкая (±${g.accuracy_m} м). Выйдите на открытое место или уточните метку вручную.`);
   if (haversineKm(g, SEMEY) > 25) warn.push('Точка далеко от Семея. Проверьте координаты.');
-  return `<div class="${unsaved ? 'blk' : 'done'}"><b>${unsaved ? 'Не сохранено' : '✓ Сохранено'}</b><br>
+  return `<div class="${unsaved ? 'blk' : 'done'}"><b>${unsaved ? 'Не сохранено' : startMode ? '✓ Точка выбрана' : '✓ Сохранено'}</b><br>
     <span class="uid">${esc(geoText(g))}</span>${g.accuracy_m != null ? ` · ±${g.accuracy_m} м` : ''}<br>Источник: ${esc(geoSourceLabel(g.source))}</div>
     ${warn.map(w => `<p class="hint bad-t">${esc(w)}</p>`).join('')}`;
 }
@@ -86,17 +88,12 @@ function setDraft(p, source, pan = true) {
   if (source === 'pin' && gpsFix) { g.gps_fix = gpsFix; g.pin_offset_m = Math.round(haversineKm(gpsFix, g) * 1000); }
   draft = g;
   refresh(pan);
+  if (onChange) onChange(draft);
 }
 
-export function screenGeo() {
-  saved = A.S.geo || null;
-  draft = saved ? { ...saved } : null;
-  gpsFix = saved ? (saved.gps_fix || (saved.source === 'gps' ? { lat: saved.lat, lng: saved.lng, accuracy_m: saved.accuracy_m } : null)) : null;
-  const d = dis();
-  return {
-    title: 'Привязка к карте', sub: A.S.object_code, back: '#/map', nav: true,
-    html: `<section class="card"><h2>Здание на карте</h2>
-      <p class="hint">${esc(A.S.address)}</p>
+function mapCards(d, intro) {
+  return `<section class="card"><h2>Здание на карте</h2>
+      ${intro}
       <div id="geo-status">${statusHtml()}</div>
       <div id="geomap" class="geo-map"><p class="hint">Карта загружается…</p></div>
       <p class="hint">Нажмите на карту или перетащите метку, чтобы поставить её точно на здание. Без интернета подложка не загрузится, но GPS и координаты работают.</p>
@@ -106,27 +103,47 @@ export function screenGeo() {
       <label class="fl">Широта<input class="in" id="geo-lat" inputmode="decimal" placeholder="например: 50.4111" value="${draft ? draft.lat : ''}" autocomplete="off"${d}></label>
       <label class="fl">Долгота<input class="in" id="geo-lng" inputmode="decimal" placeholder="например: 80.2275" value="${draft ? draft.lng : ''}" autocomplete="off"${d}></label>
       <button class="btn ghost" data-act="geo-apply"${d}>Применить координаты</button>
-      <div id="geo-link" class="hint">${draft ? `<a href="${esc(osmLink(draft))}" target="_blank" rel="noopener">Открыть точку в OpenStreetMap ›</a>` : ''}</div></section>
+      <div id="geo-link" class="hint">${draft ? `<a href="${esc(osmLink(draft))}" target="_blank" rel="noopener">Открыть точку в OpenStreetMap ›</a>` : ''}</div></section>`;
+}
+
+async function mountMap() {
+  const box = document.getElementById('geomap');
+  try {
+    L = await loadLeaflet();
+    if (!document.getElementById('geomap')) return;
+    box.innerHTML = '';
+    L.Icon.Default.imagePath = 'vendor/leaflet/images/';
+    map = L.map(box, { zoomControl: true }).setView(draft ? [draft.lat, draft.lng] : [SEMEY.lat, SEMEY.lng], draft ? 19 : 13);
+    L.tileLayer(TILES, { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    if (startMode || canEdit()) map.on('click', e => setDraft(e.latlng, 'pin', false));
+    marker = null; circle = null;
+    refresh(false);
+    ui.cleanup = () => { if (map) { map.remove(); map = null; marker = null; circle = null; } startMode = false; onChange = null; };
+  } catch (e) {
+    box.innerHTML = `<div class="blk">${esc(e.message)}. Координаты можно ввести вручную.</div>`;
+  }
+}
+
+// Редактор точки на экране старта нового обследования (до создания записи).
+export function startGeoEditor(change) {
+  startMode = true; onChange = change; saved = null; gpsFix = null;
+  return { html: mapCards('', ''), mount: mountMap };
+}
+export function resetStartGeo() { draft = null; }
+
+export function screenGeo() {
+  startMode = false; onChange = null;
+  saved = A.S.geo || null;
+  draft = saved ? { ...saved } : null;
+  gpsFix = saved ? (saved.gps_fix || (saved.source === 'gps' ? { lat: saved.lat, lng: saved.lng, accuracy_m: saved.accuracy_m } : null)) : null;
+  const d = dis();
+  return {
+    title: 'Привязка к карте', sub: A.S.object_code, back: '#/map', nav: true,
+    html: `${mapCards(d, `<p class="hint">${esc(A.S.address)}</p>`)}
     <section class="card"><button class="btn big" data-act="geo-save"${d}>Сохранить привязку</button>
       ${saved ? `<button class="btn ghost danger" data-act="geo-clear"${d}>Снять привязку</button>` : ''}
       <p class="hint">Координаты записываются в паспорт обследования, схему мониторинга и файл building.geojson в пакете.</p></section>`,
-    mount: async () => {
-      const box = document.getElementById('geomap');
-      try {
-        L = await loadLeaflet();
-        if (!document.getElementById('geomap')) return;
-        box.innerHTML = '';
-        L.Icon.Default.imagePath = 'vendor/leaflet/images/';
-        map = L.map(box, { zoomControl: true }).setView(draft ? [draft.lat, draft.lng] : [SEMEY.lat, SEMEY.lng], draft ? 19 : 13);
-        L.tileLayer(TILES, { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
-        if (canEdit()) map.on('click', e => setDraft(e.latlng, 'pin', false));
-        marker = null; circle = null;
-        refresh(false);
-        ui.cleanup = () => { if (map) { map.remove(); map = null; marker = null; circle = null; } };
-      } catch (e) {
-        box.innerHTML = `<div class="blk">${esc(e.message)}. Координаты можно ввести вручную.</div>`;
-      }
-    },
+    mount: mountMap,
   };
 }
 
