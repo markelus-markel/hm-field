@@ -13,6 +13,7 @@ import {
 import { startStream, stopStream, grabFrame, fromFile, savePhoto } from './camera.js';
 import { esc, LBL, STATUS, fmtDT, fmtTime, fmtBytes } from './util.js';
 import { nextStep, why } from './nav.js';
+import { chosen } from './builder.js';
 import { attrOf } from './registry.js';
 import { startGeoEditor, resetStartGeo, startGeo, geocodeAddress, applyAddressPoint, noteAddressPoint, lastReverse, refreshLabel } from './geo.js';
 
@@ -66,7 +67,8 @@ function syncStart() {
   $('#start-need').textContent = ok ? '' : 'Для начала нужны: ' + [dv.ok ? null : 'адрес с номером дома', g ? null : 'точка на карте'].filter(Boolean).join(' и ') + '.';
 }
 export function screenStart() {
-  const cfg = A.cfg;
+  const cfg = A.base || A.cfg;
+  const plan = chosen();
   resetStartGeo();
   addrAuto = true;
   const ge = startGeoEditor(() => syncStart(), r => {
@@ -81,14 +83,22 @@ export function screenStart() {
     html: `
     <section class="card why-card"><h2>${esc(cfg.intro.title)}</h2><p>${esc(cfg.intro.lead)}</p><p>${esc(cfg.intro.why)}</p>
       <a class="btn ghost" href="#/about">Подробнее: что делать и что получится</a></section>
-    <section class="card">
+    ${plan ? `<section class="card"><h2>Набор под цель</h2>
+      <dl class="kv2"><dt>Цель</dt><dd>${esc(plan.goal.label || '—')}</dd>
+        <dt>Системы</dt><dd>${esc(plan.summary.systems.join(', ') || '—')}</dd>
+        <dt>Зоны</dt><dd>${esc(plan.summary.zones.join(', ') || 'нет')}</dd>
+        <dt>Пунктов / показаний / кадров</dt><dd>${plan.summary.items} / ${plan.summary.readings} / ${plan.summary.slots}</dd>
+        <dt>Основа</dt><dd>${esc(cfg.protocol.code)} (стандартный протокол не менялся)</dd>
+        <dt>Дата и время</dt><dd>${esc(fmtDT(nowISO()))}<br><small>время начала фиксируется автоматически</small></dd></dl>
+      <a class="btn ghost" href="#/goal">Изменить цель и метрики</a></section>` : `<section class="card">
       <h2>${esc(cfg.protocol.code)}</h2>
       <dl class="kv2">
         <dt>Этап</dt><dd>${esc(cfg.protocol.stage)}</dd>
         <dt>Цель</dt><dd>${esc(cfg.protocol.goal)}</dd>
         <dt>Дата и время</dt><dd>${esc(fmtDT(nowISO()))}<br><small>время начала фиксируется автоматически</small></dd>
       </dl>
-    </section>
+      <a class="btn ghost" href="#/goal">Выбрать цель и метрики</a>
+    </section>`}
     <section class="card">
       <h2>Здание</h2>
       ${field('Адрес здания', `<input class="in" id="f-addr" placeholder="введите адрес или определите место по GPS" autocomplete="off">`, { req: true, hint: 'Город, улица и номер дома. Адрес вводится вручную и работает без интернета.' })}
@@ -535,7 +545,7 @@ export function registerScreenActions() {
     if (!rep.trim()) { toast('Укажите представителя', 'err'); return; }
     const P = A.profile;
     try { await navigator.storage?.persist?.(); } catch { /* необязательно */ }
-    createSurvey({ inspector: { name: P.name, position: P.position, org: P.org, profile_id: P.id }, representative: rep, representative_org: org, address: dv.address, geo });
+    createSurvey({ inspector: { name: P.name, position: P.position, org: P.org, profile_id: P.id }, representative: rep, representative_org: org, address: dv.address, geo, ...(chosen() ? { cfg: chosen().cfg, goal: chosen().goal } : {}) });
     await flush();
     ui.go('#/access');
   };

@@ -36,7 +36,9 @@ export function surveyJSON(photoFiles = {}, sigFiles = {}) {
   return {
     schema_version: cfg.schema_version,
     kind: 'hm-field-survey',
-    protocol: { code: S.protocol_code, version: S.protocol_version, stage: cfg.protocol.stage },
+    protocol: { code: S.protocol_code, version: S.protocol_version, stage: cfg.protocol.stage,
+      ...(S.cfg ? { template_of: cfg.protocol.template_of || null, goal: S.goal || null,
+        metrics_profile: { systems: Object.keys(cfg.systems), zones: cfg.access_zones.map(z => z.id), sections: cfg.sections.map(x => x.id), photo_slots: cfg.photo_slots.map(x => x.id) } } : {}) },
     object: { code: S.object_code, address: S.address, id_prefix: S.id_prefix, geo: S.geo || null },
     revision: S.revision, revision_note: S.revision_note, status: S.status,
     started_at: S.started_at, finished_at: S.finished_at,

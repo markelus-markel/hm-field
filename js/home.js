@@ -52,7 +52,7 @@ export function screenHome() {
   } else {
     main = `<section class="card"><h2>Новое обследование</h2>
       <p class="hint">Адрес вводится вручную, здание обязательно привязывается к карте.</p><dl class="kv2"><dt>Протокол</dt><dd>${esc(cfg.protocol.code)}</dd></dl>
-      <a class="btn big" href="#/new">Начать обследование</a>
+      <a class="btn big" href="#/goal">Начать обследование</a>
       <button class="btn ghost" data-act="restore-pick">Восстановить из резервной копии…</button></section>`;
   }
   const q = (href, t, sub) => `<a class="quick-i" href="${href}"><b>${t}</b><small>${sub}</small></a>`;

@@ -7,6 +7,7 @@ import { esc } from './util.js';
 import { screenRegistry, registerRegistryActions } from './registry.js';
 import { screenGeo, registerGeoActions } from './geo.js';
 import { screenWelcome, screenHome, screenProfile, registerHomeActions } from './home.js';
+import { screenGoal, registerBuilderActions, loadCatalog, loadBuilder } from './builder.js';
 import { subnavHtml, pagerHtml, drawerHtml, stripHtml } from './nav.js';
 
 const root = document.getElementById('app');
@@ -24,7 +25,7 @@ function routeScreen() {
   if (r === 'about') return SA.screenAbout();
   if (!A.profile) return screenWelcome();
   if (r === 'profile') return screenProfile();
-  if (!A.S) return r === 'new' ? SA.screenStart() : screenHome();
+  if (!A.S) return r === 'new' ? SA.screenStart() : r === 'goal' ? screenGoal() : screenHome();
   switch (r) {
     case '': case 'home': case 'new': return screenHome();
     case 'access': return SA.screenAccess();
@@ -147,6 +148,7 @@ SB.registerScreenActionsB();
 registerRegistryActions();
 registerGeoActions();
 registerHomeActions();
+registerBuilderActions();
 
 // ---------- офлайн-служба ----------
 function showUpdate() {
@@ -172,5 +174,6 @@ if ('serviceWorker' in navigator) {
     root.innerHTML = `<div class="blk" style="margin:16px"><b>Не удалось открыть хранилище.</b><br>${esc(e.message)}<br>Закройте приватную вкладку и откройте приложение в обычном режиме.</div>`;
     return;
   }
+  try { await loadCatalog(); await loadBuilder(); } catch (e) { console.error('catalog', e); }
   render();
 })();

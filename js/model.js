@@ -12,7 +12,7 @@ export const A = {
   listeners: new Set(),
 };
 
-export const APP_VERSION = '0.8.2';
+export const APP_VERSION = '0.9.0';
 
 // ---------- общие помощники ----------
 export function nowISO() {
@@ -27,9 +27,11 @@ const clip = v => (typeof v === 'string' && v.length > 300 ? v.slice(0, 300) + '
 export const clone = v => JSON.parse(JSON.stringify(v));
 
 export async function loadConfig() {
-  if (window.__PROTOCOL__) { A.cfg = window.__PROTOCOL__; return A.cfg; }
-  const r = await fetch('data/protocol.json');
-  A.cfg = await r.json();
+  if (!A.base) {
+    if (window.__PROTOCOL__) A.base = window.__PROTOCOL__;
+    else A.base = await (await fetch('data/protocol.json')).json();
+  }
+  if (!A.S) A.cfg = A.base;
   return A.cfg;
 }
 
@@ -140,14 +142,16 @@ export function deriveObject(address) {
   return { ok: true, id_prefix: prefix, object_code: `${city3}-${prefix}`, address: s };
 }
 
-export function createSurvey({ inspector, representative, representative_org, address, geo }) {
-  const cfg = A.cfg;
+export function createSurvey({ inspector, representative, representative_org, address, geo, cfg: custom, goal }) {
+  const cfg = custom || A.base || A.cfg;
+  A.cfg = cfg;
   const dv = deriveObject(address);
   if (!dv.ok) throw new Error(dv.error);
   const S = {
     schema_version: cfg.schema_version,
     protocol_code: cfg.protocol.code,
     protocol_version: cfg.protocol.version,
+    ...(custom ? { cfg: custom, goal: goal || null, template: custom.protocol.template_of || null } : {}),
     object_code: dv.object_code,
     address: dv.address,
     id_prefix: dv.id_prefix,
@@ -197,6 +201,7 @@ export async function initState() {
   const S = await db.kvGet('survey');
   if (!S) return false;
   A.S = S;
+  A.cfg = S.cfg || A.base;
   // обследование из версий до 0.6.0: профиль создаётся из имени обследователя, работа не прерывается
   if (!A.profile) {
     A.profile = newProfile({ name: S.inspector.name, position: S.inspector.position || '', org: S.inspector.org || '', phone: '' });
@@ -238,7 +243,8 @@ export async function wipeDevice() {
   const keep = A.profile;
   await db.wipeAll();
   if (keep) await db.kvSet('profile', keep);
-  A.S = null; A.PH = new Map(); A.log = [];
+  A.S = null; A.PH = new Map(); A.log = []; A.cfg = A.base; A.builder = null;
+  try { await db.kvDelete('builder'); } catch (e) { /* необязательно */ }
 }
 
 // ---------- зоны доступа ----------

@@ -340,3 +340,20 @@ input, textarea, select, canvas { scroll-margin-top: calc(var(--hh, 57px) + 76px
 .hm-pin{background:none;border:0}
 .leaflet-tooltip.hm-tip{background:#fff;color:#111;border:0;font-weight:600;font-size:13px;width:max-content;max-width:250px;white-space:normal;padding:4px 8px;box-shadow:0 1px 6px rgba(0,0,0,.5)}
 .leaflet-tooltip-top.hm-tip:before{border-top-color:#fff}
+
+/* конструктор набора метрик (0.9.0) */
+.tgl { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; margin: 4px 0; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.tgl i { flex: 0 0 24px; height: 24px; line-height: 22px; text-align: center; border: 1.5px solid var(--line); border-radius: 7px; font-style: normal; font-weight: 700; }
+.tgl.on { border-color: var(--pri); }
+.tgl.on i { background: var(--pri); border-color: var(--pri); color: var(--pri-ink); }
+.tgl.lock { opacity: .75; }
+.tgl.custom { cursor: default; }
+.tgl .x { margin-left: auto; appearance: none; border: 0; background: none; font-size: 22px; line-height: 1; color: var(--mute); cursor: pointer; padding: 4px 8px; }
+.addrow { display: flex; gap: 8px; margin: 6px 0 12px; }
+.addrow .in { flex: 1; min-width: 0; }
+.addrow .in.sm { flex: 0 0 72px; }
+.bld-sys summary { cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-height: 44px; justify-content: center; }
+.bld-sys summary small { color: var(--mute); }
+.bld-sys h3 { margin: 14px 0 4px; font-size: 15px; }
+.why-list { margin: 8px 0; padding-left: 18px; }
+.why-list li { margin: 4px 0; }

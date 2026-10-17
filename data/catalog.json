@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "template": { "id": "mkd-huawei-beeline", "label": "Стандартный протокол «МКД: Huawei/Билайн»", "note": "AG-CN-SUTO-13A-FIELD-01: подвал, ГРЩ, лифты, кровля и системы здания" },
+  "zones": [
+    { "id": "basement", "label": "Технический подвал", "kw": ["подвал"] },
+    { "id": "grsh", "label": "Электрощитовая / ГРЩ", "kw": ["грщ", "щитов", "вру"] },
+    { "id": "lift", "label": "Лифтовые зоны", "kw": ["лифт"] },
+    { "id": "roof", "label": "Кровля", "kw": ["кровл", "крыш", "чердак", "протечк"] }
+  ],
+  "systems": [
+    { "id": "HEAT", "label": "Отопление", "kw": ["отоплен", "тепл", "батаре", "радиатор", "элеватор"] },
+    { "id": "CWS", "label": "ХВС", "kw": ["хвс", "холодн", "водоснаб", "водопровод", "вода", "воды", "сантех", "санузел", "ванн"] },
+    { "id": "HWS", "label": "ГВС", "kw": ["гвс", "горяч", "бойлер", "водонагрев", "аристон", "ariston", "сантех", "санузел"] },
+    { "id": "SEWER", "label": "Канализация", "kw": ["канализ", "водоотвед", "сантех", "санузел", "унитаз", "ванн"] },
+    { "id": "ELECTRICAL", "label": "Электроснабжение", "kw": ["электр", "энерг", "освещ", "розетк", "выключат", "светильник", "щит", "счётчик электро"] },
+    { "id": "NET", "label": "Сеть и Wi-Fi (дополнительная система)", "kw": ["wifi", "wi-fi", "вай-фай", "вайфай", "роутер", "маршрутизатор", "интернет", "сеть", "связь", "iot", "датчик"] }
+  ],
+  "goals": [
+    { "id": "full", "label": "Подготовка к мониторингу здания (Huawei, Билайн)", "systems": ["HEAT", "CWS", "HWS", "SEWER", "ELECTRICAL"], "zones": ["basement", "grsh", "lift", "roof"], "kw": ["мониторинг", "huawei", "хуавей", "билайн", "connected", "здание целиком", "мкд", "многоквартир"] },
+    { "id": "room", "label": "Одно помещение (квартира, офис)", "systems": ["HEAT", "CWS", "HWS", "SEWER", "ELECTRICAL"], "zones": [], "kw": ["помещен", "квартир", "комнат", "офис"] },
+    { "id": "electric", "label": "Электроснабжение и освещение", "systems": ["ELECTRICAL"], "zones": ["grsh"], "kw": [] },
+    { "id": "heat", "label": "Отопление", "systems": ["HEAT"], "zones": ["basement"], "kw": [] },
+    { "id": "water", "label": "Водоснабжение и канализация", "systems": ["CWS", "HWS", "SEWER"], "zones": ["basement"], "kw": [] },
+    { "id": "net", "label": "Связь, сеть и Wi-Fi", "systems": ["NET"], "zones": [], "kw": [] },
+    { "id": "roof", "label": "Кровля", "systems": [], "zones": ["roof"], "kw": [] },
+    { "id": "lift", "label": "Лифты", "systems": [], "zones": ["lift"], "kw": [] }
+  ],
+  "element_types_add": {
+    "HEAT": [{ "id": "radiator", "label": "Радиатор / батарея", "ifc": "IfcSpaceHeater" }],
+    "HWS": [{ "id": "water_heater", "label": "Водонагреватель (бойлер)", "ifc": "IfcBoiler" }],
+    "SEWER": [{ "id": "fixture", "label": "Сантехприбор (унитаз, раковина, ванна)", "ifc": "IfcSanitaryTerminal" }],
+    "CWS": [{ "id": "mixer", "label": "Смеситель", "ifc": "IfcValve" }],
+    "ELECTRICAL": [
+      { "id": "outlet", "label": "Розетка", "ifc": "IfcOutlet" },
+      { "id": "switch", "label": "Выключатель", "ifc": "IfcSwitchingDevice" },
+      { "id": "light", "label": "Светильник", "ifc": "IfcLightFixture" }
+    ]
+  },
+  "extra_readings": {
+    "ELECTRICAL": [{ "id": "kwh", "label": "Показание счётчика", "units": ["кВт·ч", "другое"] }],
+    "HEAT": [{ "id": "surface_t", "label": "Температура поверхности", "units": ["°C", "другое"] }]
+  },
+  "extra_items": {
+    "ELECTRICAL": ["Розетки и выключатели визуально исправны", "Освещение работает"],
+    "HEAT": ["Радиаторы тёплые по всей поверхности"],
+    "SEWER": ["Запах канализации отсутствует"],
+    "HWS": ["Водонагреватель включён"]
+  },
+  "net_system": {
+    "id": "NET", "label": "Сеть / Wi-Fi", "code": "NET", "priority": "P2", "section": "CL14",
+    "section_def": {
+      "id": "CL14", "num": "ЧЛ-14", "title": "Сеть и Wi-Fi", "kind": "system", "priority": "P2", "system": "NET",
+      "purpose": "Найти сетевое оборудование: роутер, коммутатор, точки доступа. Только осмотр, настройки не менять.",
+      "gets": "Карточка каждого устройства: локация, фото, шильдик.",
+      "items": [
+        { "id": "i01", "text": "Сетевое устройство найдено", "key": "entry_found" },
+        { "id": "i02", "text": "Местоположение подтверждено", "key": "location_confirmed" },
+        { "id": "i03", "text": "Питание рядом проверено" },
+        { "id": "i04", "text": "Индикаторы сфотографированы" },
+        { "id": "i05", "text": "Шильдик сфотографирован (пароли и название сети закрыты)" },
+        { "id": "i06", "text": "Мобильный сигнал проверен" }
+      ],
+      "readings": []
+    },
+    "element_types": [
+      { "id": "router", "label": "Wi-Fi роутер", "ifc": "IfcCommunicationsAppliance" },
+      { "id": "switch", "label": "Коммутатор", "ifc": "IfcCommunicationsAppliance" },
+      { "id": "ap", "label": "Точка доступа", "ifc": "IfcCommunicationsAppliance" },
+      { "id": "modem", "label": "Модем / ONT", "ifc": "IfcCommunicationsAppliance" },
+      { "id": "other", "label": "Другое", "ifc": "IfcBuildingElementProxy" }
+    ]
+  },
+  "locked_slots": ["general_room", "whole_object", "closeup", "nameplate", "readings", "relocation_context"]
+}
