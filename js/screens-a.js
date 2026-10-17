@@ -14,7 +14,7 @@ import { startStream, stopStream, grabFrame, fromFile, savePhoto } from './camer
 import { esc, LBL, STATUS, fmtDT, fmtTime, fmtBytes } from './util.js';
 import { nextStep, why } from './nav.js';
 import { attrOf } from './registry.js';
-import { startGeoEditor, resetStartGeo, startGeo, geocodeAddress, applyAddressPoint } from './geo.js';
+import { startGeoEditor, resetStartGeo, startGeo, geocodeAddress, applyAddressPoint, noteAddressPoint, lastReverse } from './geo.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 export const camURL = (scope, ref, slot, back) =>
@@ -44,6 +44,7 @@ async function findOnMap(force) {
     const r = await geocodeAddress(q);
     if (my !== findSeq || !$('#f-addr')) return;
     if (!r) { el.innerHTML = '<span class="bad-t">Адрес не найден. Поставьте метку на карте вручную или проверьте написание.</span>'; return; }
+    noteAddressPoint(r);
     const placed = applyAddressPoint(r, force);
     el.innerHTML = placed ? `Найдено: ${esc(r.name)}.<br>Проверьте метку и при необходимости перетащите её точно на здание.`
       : 'Точка уже задана вами вручную, метка не сдвигалась. Нажмите «Найти на карте по адресу», чтобы перенести её.';
@@ -511,6 +512,11 @@ function camAfterSave(id) {
 
 export function registerScreenActions() {
   const a = ui.actions;
+  a['addr-use'] = () => {
+    const r = lastReverse(); if (!r?.field) return;
+    const f = $('#f-addr'); f.value = r.field; f.dispatchEvent(new Event('input'));
+    toast(r.hasHouse ? 'Адрес подставлен' : 'Адрес подставлен. Допишите номер дома', 'ok');
+  };
   a['addr-find'] = () => { clearTimeout(findTimer); findOnMap(true); };
   a.start = async () => {
     const rep = $('#f-rep').value, org = $('#f-org').value;

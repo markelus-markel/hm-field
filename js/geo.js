@@ -34,6 +34,9 @@ export function geoFeature() {
 let L = null, map = null, marker = null, circle = null;
 let draft = null, saved = null, gpsFix = null;
 let startMode = false, onChange = null;
+let revTimer = null, revSeq = 0, lastRev = null, addrPoint = null;
+export const lastReverse = () => lastRev;
+export function noteAddressPoint(p) { addrPoint = p; refresh(false); }
 export const startGeo = () => (startMode ? draft : null);
 
 function loadLeaflet() {
@@ -58,6 +61,10 @@ function statusHtml() {
   const unsaved = !startMode && !same(saved, g);
   const warn = [];
   if (g.accuracy_m != null && g.accuracy_m > 30) warn.push(`Точность GPS низкая (±${g.accuracy_m} м). Выйдите на открытое место или уточните метку вручную.`);
+  if (addrPoint && g.source !== 'address') {
+    const m = Math.round(haversineKm(g, addrPoint) * 1000);
+    if (m > 150) warn.push(`Метка в ${m} м от места, найденного по набранному адресу. Если вы не у здания, перенесите метку на дом или нажмите «Найти на карте по адресу».`);
+  }
   if (haversineKm(g, SEMEY) > 25) warn.push('Точка далеко от Семея. Проверьте координаты.');
   return `<div class="${unsaved ? 'blk' : 'done'}"><b>${unsaved ? 'Не сохранено' : startMode ? '✓ Точка выбрана' : '✓ Сохранено'}</b><br>
     <span class="uid">${esc(geoText(g))}</span>${g.accuracy_m != null ? ` · ±${g.accuracy_m} м` : ''}<br>Источник: ${esc(geoSourceLabel(g.source))}</div>
@@ -82,12 +89,36 @@ function refresh(pan) {
   if (pan) map.setView(ll, 19);
 }
 
+function setAddrBox(html) { const el = document.getElementById('geo-addr'); if (el) el.innerHTML = html; }
+function scheduleReverse() {
+  clearTimeout(revTimer);
+  if (!draft || draft.source === 'address') { lastRev = null; setAddrBox(''); return; }
+  setAddrBox('<span class="hint">Определяю адрес по метке…</span>');
+  const my = ++revSeq, g = draft;
+  revTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ru&zoom=18&addressdetails=1&lat=${g.lat}&lon=${g.lng}`, { headers: { Accept: 'application/json' } });
+      const j = await r.json();
+      if (my !== revSeq) return;
+      if (!j || j.error) { lastRev = null; setAddrBox('<span class="hint">Адрес по этой точке не найден.</span>'); return; }
+      const a = j.address || {};
+      const city = a.city || a.town || a.village || '';
+      const road = a.road || a.pedestrian || '';
+      const field = road ? [city && 'г. ' + city, road, a.house_number].filter(Boolean).join(', ') : '';
+      lastRev = { name: j.display_name, field, hasHouse: !!a.house_number };
+      setAddrBox(`<div class="hint">Адрес по метке: <b>${esc(j.display_name)}</b></div>` +
+        (startMode && field ? `<button class="btn ghost" data-act="addr-use">Подставить в поле «Адрес здания»${a.house_number ? '' : ' (допишите номер дома)'}</button>` : ''));
+    } catch { if (my === revSeq) { lastRev = null; setAddrBox('<span class="hint">Адрес по метке не определён (нужен интернет).</span>'); } }
+  }, 900);
+}
+
 function setDraft(p, source, pan = true) {
   let g = { lat: +(+p.lat).toFixed(6), lng: +(+p.lng).toFixed(6), accuracy_m: source === 'gps' ? Math.round(p.accuracy) : null, source };
   if (source === 'gps') gpsFix = { lat: g.lat, lng: g.lng, accuracy_m: g.accuracy_m };
   if (source === 'pin' && gpsFix) { g.gps_fix = gpsFix; g.pin_offset_m = Math.round(haversineKm(gpsFix, g) * 1000); }
   draft = g;
   refresh(pan);
+  scheduleReverse();
   if (onChange) onChange(draft);
 }
 
@@ -95,6 +126,7 @@ function mapCards(d, intro) {
   return `<section class="card"><h2>Здание на карте</h2>
       ${intro}
       <div id="geo-status">${statusHtml()}</div>
+      <div id="geo-addr"></div>
       <div class="row"><button class="btn big" data-act="geo-gps"${d}>📍 Определить по GPS</button></div>
       <div id="geomap" class="geo-map"><p class="hint">Карта загружается…</p></div>
       <p class="hint">Нажмите на карту или перетащите метку, чтобы поставить её точно на здание. Без интернета подложка не загрузится, но GPS и координаты работают.</p>
@@ -126,10 +158,10 @@ async function mountMap() {
 
 // Редактор точки на экране старта нового обследования (до создания записи).
 export function startGeoEditor(change) {
-  startMode = true; onChange = change; saved = null; gpsFix = null;
+  startMode = true; onChange = change; saved = null; gpsFix = null; addrPoint = null; lastRev = null;
   return { html: mapCards('', ''), mount: mountMap };
 }
-export function resetStartGeo() { draft = null; }
+export function resetStartGeo() { draft = null; addrPoint = null; lastRev = null; }
 
 // Поиск адреса в OpenStreetMap (Nominatim). Только онлайн; запросы редкие (пауза после ввода), как требует политика сервиса.
 export async function geocodeAddress(q) {
@@ -148,7 +180,7 @@ export function applyAddressPoint(p, force = false) {
 }
 
 export function screenGeo() {
-  startMode = false; onChange = null;
+  startMode = false; onChange = null; addrPoint = null; lastRev = null;
   saved = A.S.geo || null;
   draft = saved ? { ...saved } : null;
   gpsFix = saved ? (saved.gps_fix || (saved.source === 'gps' ? { lat: saved.lat, lng: saved.lng, accuracy_m: saved.accuracy_m } : null)) : null;
