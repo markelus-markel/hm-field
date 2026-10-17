@@ -12,7 +12,7 @@ export const A = {
   listeners: new Set(),
 };
 
-export const APP_VERSION = '0.8.1';
+export const APP_VERSION = '0.8.2';
 
 // ---------- общие помощники ----------
 export function nowISO() {

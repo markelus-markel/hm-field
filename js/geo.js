@@ -35,6 +35,17 @@ let L = null, map = null, marker = null, circle = null;
 let draft = null, saved = null, gpsFix = null;
 let startMode = false, onChange = null;
 let onAddr = null;
+let gpsWatch = null, gpsTimer = null, gpsBest = null;
+function stopGps(report) {
+  if (gpsWatch != null) { try { navigator.geolocation.clearWatch(gpsWatch); } catch { /* уже остановлено */ } }
+  clearTimeout(gpsTimer); gpsWatch = null; gpsTimer = null;
+  const b = document.querySelector('[data-act="geo-gps"]');
+  if (b) b.textContent = '📍 Определить по GPS';
+  if (report && gpsBest) {
+    const m = Math.round(gpsBest.accuracy);
+    toast(m <= 10 ? `Место определено, точность ±${m} м. Проверьте метку` : `Точность ±${m} м. Если вы у входа в здание, перетащите метку точно на вход (лучше на «Спутнике»)`, m <= 10 ? 'ok' : undefined);
+  }
+}
 const SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 let baseKind = 'osm', baseLayer = null;
 try { if (localStorage.getItem('hm_base') === 'sat') baseKind = 'sat'; } catch { /* необязательно */ }
@@ -185,7 +196,7 @@ async function mountMap() {
     if (startMode || canEdit()) map.on('click', e => setDraft(e.latlng, 'pin', false));
     marker = null; circle = null;
     refresh(false);
-    ui.cleanup = () => { if (map) { map.remove(); map = null; marker = null; circle = null; } startMode = false; onChange = null; onAddr = null; };
+    ui.cleanup = () => { stopGps(false); if (map) { map.remove(); map = null; marker = null; circle = null; } startMode = false; onChange = null; onAddr = null; };
   } catch (e) {
     box.innerHTML = `<div class="blk">${esc(e.message)}. Координаты можно ввести вручную.</div>`;
   }
@@ -234,15 +245,29 @@ export function registerGeoActions() {
   const a = ui.actions;
   a['geo-gps'] = el => {
     if (!navigator.geolocation) { toast('Телефон не поддерживает определение места', 'err'); return; }
-    el.disabled = true; toast('Определяю место…');
-    navigator.geolocation.getCurrentPosition(pos => {
-      el.disabled = false;
-      setDraft({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }, 'gps');
-      toast('Место определено. Проверьте метку и сохраните', 'ok');
+    if (gpsWatch != null) { stopGps(true); return; }   // повторное нажатие — остановить уточнение
+    gpsBest = null;
+    el.textContent = '⏳ Уточняю… нажмите, чтобы остановить';
+    toast('Определяю место, жду уточнения до 25 секунд…');
+    gpsWatch = navigator.geolocation.watchPosition(pos => {
+      // человек сам поставил метку — GPS её больше не трогает
+      if (draft && draft.source !== 'gps') { stopGps(false); return; }
+      const c = pos.coords;
+      if (gpsBest && c.accuracy >= gpsBest.accuracy) return;
+      gpsBest = { lat: c.latitude, lng: c.longitude, accuracy: c.accuracy };
+      setDraft(gpsBest, 'gps');
+      const b = document.querySelector('[data-act="geo-gps"]');
+      if (b) b.textContent = `⏳ ±${Math.round(c.accuracy)} м, уточняю… (стоп)`;
+      if (c.accuracy <= 5) stopGps(true);
     }, err => {
-      el.disabled = false;
-      toast(err.code === 1 ? 'Нет разрешения на геолокацию. Разрешите её для сайта в настройках браузера' : err.code === 3 ? 'GPS не ответил вовремя. Выйдите на открытое место и повторите' : 'Не удалось определить место', 'err');
+      // временные ошибки (код 2, 3) при уточнении нормальны: ждём дальше до конца отведённого времени
+      if (err.code === 1) { stopGps(false); toast('Нет разрешения на геолокацию. Разрешите её для сайта в настройках браузера', 'err'); }
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+    gpsTimer = setTimeout(() => {
+      const had = !!gpsBest;
+      stopGps(true);
+      if (!had) toast('GPS не ответил. Выйдите на открытое место, включите геолокацию на телефоне и повторите', 'err');
+    }, 25000);
   };
   a['geo-base'] = el => setBase(el.dataset.b);
   a['geo-center'] = () => {
