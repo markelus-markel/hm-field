@@ -8,6 +8,7 @@ import {
   summary, commsRows, sectionStatus, replaceFromBackup,
 } from './model.js';
 import { esc, LBL, STATUS, fmtDT } from './util.js';
+import { geoFeature, geoText, geoSourceLabel } from './geo.js';
 import { photoRegister, componentRegister, connectionRegister, monitoringMap, toCSV, registryReportHTML, attrOf } from './registry.js';
 
 const extOf = mime => ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif' }[mime] || 'jpg');
@@ -36,7 +37,7 @@ export function surveyJSON(photoFiles = {}, sigFiles = {}) {
     schema_version: cfg.schema_version,
     kind: 'hm-field-survey',
     protocol: { code: S.protocol_code, version: S.protocol_version, stage: cfg.protocol.stage },
-    object: { code: S.object_code, address: S.address, id_prefix: S.id_prefix },
+    object: { code: S.object_code, address: S.address, id_prefix: S.id_prefix, geo: S.geo || null },
     revision: S.revision, revision_note: S.revision_note, status: S.status,
     started_at: S.started_at, finished_at: S.finished_at,
     inspector: S.inspector, representative: S.representative,
@@ -136,6 +137,7 @@ export function reportHTML(imgSrc) {
   <table class="kv">
   <tr><th>Код</th><td>${esc(S.protocol_code)} ${esc(S.protocol_version)}</td><th>Статус протокола</th><td>${esc(cfg.protocol.status)}</td></tr>
   <tr><th>Объект</th><td>${esc(S.object_code)}</td><th>Адрес</th><td>${esc(S.address)}</td></tr>
+  <tr><th>Координаты</th><td colspan="3">${S.geo ? `${esc(geoText(S.geo))}${S.geo.accuracy_m != null ? ' (±' + S.geo.accuracy_m + ' м)' : ''}, источник: ${esc(geoSourceLabel(S.geo.source))} · <a href="https://www.openstreetmap.org/?mlat=${S.geo.lat}&amp;mlon=${S.geo.lng}#map=19/${S.geo.lat}/${S.geo.lng}">карта</a>` : 'не заданы'}</td></tr>
   <tr><th>Этап</th><td colspan="3">${esc(cfg.protocol.stage)}</td></tr>
   <tr><th>Цель</th><td colspan="3">${esc(cfg.protocol.goal)}</td></tr>
   <tr><th>Начало</th><td>${esc(fmtDT(S.started_at))}</td><th>Окончание</th><td>${esc(fmtDT(S.finished_at))}</td></tr>
@@ -265,6 +267,7 @@ export async function buildPackage(kind, onProgress = () => {}) {
   await add('changelog.json', JSON.stringify(A.log, null, 2));
   onProgress('Реестры и схема');
   await add('registry/component_register.csv', toCSV(componentRegister()));
+  await add('registry/building.geojson', JSON.stringify(geoFeature(), null, 2));
   await add('registry/connections.csv', toCSV(connectionRegister()));
   await add('registry/photo_register.csv', toCSV(photoRegister(photoFiles)));
   await add('registry/monitoring_map.json', JSON.stringify(monitoringMap(), null, 2));

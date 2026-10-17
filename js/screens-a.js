@@ -174,6 +174,7 @@ export function screenMap() {
     <div class="right"><b>${closed} из ${total}</b><div class="hint">разделов закрыто</div></div></div>
     <div class="prog"><i style="width:${Math.round(closed / total * 100)}%"></i></div></section>
     ${(() => { const n = nextStep(); return n ? `<a class="next-card" href="${n.href}"><small>Дальше</small><b>${esc(n.num ? n.num + ' · ' : '')}${esc(n.title)}</b><span>${esc(n.label || 'открыть')} ›</span></a>` : '<div class="done"><b>✓ Все шаги выполнены</b>. Осталось выгрузить пакет на экране «Подписи».</div>'; })()}
+    <a class="next-card geo-card" href="#/geo"><small>Привязка к карте города</small><b>${A.S.geo ? '✓ ' + A.S.geo.lat.toFixed(5) + ', ' + A.S.geo.lng.toFixed(5) : 'Не задана'}</b><span>${A.S.geo ? (A.S.geo.accuracy_m != null ? '±' + A.S.geo.accuracy_m + ' м · ' : '') + 'изменить ›' : 'поставить на карту ›'}</span></a>
     <a class="next-card reg-card" href="#/registry"><small>Собирается автоматически</small><b>Реестр и схема</b><span>компоненты, фото, расположение ›</span></a>
     <p class="hint center"><a href="#/about">Зачем это обследование</a></p>
     <div class="map">${secs.filter(s => s.kind !== 'misc').map(card).join('')}</div>

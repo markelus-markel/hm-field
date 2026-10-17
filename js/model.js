@@ -11,7 +11,7 @@ export const A = {
   listeners: new Set(),
 };
 
-export const APP_VERSION = '0.4.0';
+export const APP_VERSION = '0.5.0';
 
 // ---------- общие помощники ----------
 export function nowISO() {
@@ -104,6 +104,7 @@ export function createSurvey({ inspector, representative, representative_org }) 
     inspector: { name: inspector.trim() },
     representative: { name: representative.trim(), org: (representative_org || '').trim() },
     entrances_count: null,
+    geo: null,
     zones: {},
     sections: {},
     objects: {},
@@ -234,6 +235,7 @@ export function modelDefaults() {
 // Объекты из версий до 0.4.0 получают недостающие поля. Существующие данные не меняются.
 export function migrateModel() {
   let changed = false;
+  if (A.S.geo === undefined) { A.S.geo = null; changed = true; }
   for (const o of Object.values(A.S.objects)) {
     const d = modelDefaults();
     for (const k of Object.keys(d)) {
@@ -298,6 +300,40 @@ export function model3dState(o) {
   };
 }
 
+// ---------- привязка здания к карте ----------
+export const SEMEY = { lat: 50.4111, lng: 80.2275 };
+export function haversineKm(a, b) {
+  const R = 6371, rad = x => (x * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+export function setGeo(d) {
+  if (!canEdit()) return false;
+  const lat = Number(d.lat), lng = Number(d.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return false;
+  const g = {
+    lat: +lat.toFixed(6), lng: +lng.toFixed(6),
+    accuracy_m: d.accuracy_m == null ? null : Math.round(d.accuracy_m),
+    source: ['gps', 'pin', 'manual'].includes(d.source) ? d.source : 'manual',
+    set_at: nowISO(), set_by: A.S.inspector.name,
+  };
+  if (d.gps_fix) { g.gps_fix = d.gps_fix; g.pin_offset_m = d.pin_offset_m ?? null; }
+  const old = A.S.geo;
+  A.S.geo = g;
+  addLog({ kind: 'geo_set', old: old ? { lat: old.lat, lng: old.lng, source: old.source } : null, new: { lat: g.lat, lng: g.lng, source: g.source }, accuracy_m: g.accuracy_m });
+  touch(); scheduleSave(0);
+  return true;
+}
+export function clearGeo() {
+  if (!canEdit() || !A.S.geo) return false;
+  const old = A.S.geo;
+  A.S.geo = null;
+  addLog({ kind: 'geo_clear', old: { lat: old.lat, lng: old.lng, source: old.source } });
+  touch(); scheduleSave(0);
+  return true;
+}
+
 export function voidObject(fid, reason) {
   if (!canEdit() || !reason.trim()) return false;
   const o = A.S.objects[fid];
@@ -354,6 +390,7 @@ export function photoAttr(scope, ref, slot) {
   const base = {
     protocol_code: S.protocol_code, object_code: S.object_code, revision: S.revision,
     author: S.inspector.name, author_role: 'inspector', app_version: APP_VERSION,
+    building_geo: S.geo ? { lat: S.geo.lat, lng: S.geo.lng } : null,
     slot_label: sl ? sl.label : (SLOT_NAMES[slot] || slot),
   };
   if (scope === 'object') {

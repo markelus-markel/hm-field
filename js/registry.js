@@ -141,7 +141,7 @@ export function monitoringMap() {
   A.PH.forEach(p => { if (!p.void) nodes.push({ id: p.photo_id, type: 'photo', label: attrOf(p).slot_label || p.slot }); });
   return {
     kind: 'hm-field-monitoring-map', generated_at: nowISO(),
-    object: { code: S.object_code, address: S.address }, revision: S.revision, status: S.status,
+    object: { code: S.object_code, address: S.address, geo: S.geo || null }, revision: S.revision, status: S.status,
     entrances, areas, comms_power: comms, connections,
     counters: { components: objs.length, photos: [...A.PH.values()].filter(p => !p.void).length },
     graph: { nodes, edges },

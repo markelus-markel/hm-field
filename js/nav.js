@@ -86,6 +86,7 @@ export function drawerHtml(hash = location.hash) {
     <span class="mt"><b>${esc(name(i))}</b></span>${i.label ? pill(i.code, i.label) : ''}</a>`).join('');
   return `<h3>Разделы обследования</h3><div class="drw">${rows}</div>
     <div class="row"><a class="btn ghost" href="#/map" data-act="modal-close-go">Карта обхода</a>
+    <a class="btn ghost" href="#/geo" data-act="modal-close-go">Привязка к карте</a>
     <a class="btn ghost" href="#/registry" data-act="modal-close-go">Реестр и схема</a>
     <a class="btn ghost" href="#/about" data-act="modal-close-go">Зачем это обследование</a></div>
     <button class="btn" data-act="modal-close">Закрыть</button>`;

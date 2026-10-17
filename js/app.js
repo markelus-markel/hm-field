@@ -5,6 +5,7 @@ import * as SA from './screens-a.js';
 import * as SB from './screens-b.js';
 import { esc } from './util.js';
 import { screenRegistry, registerRegistryActions } from './registry.js';
+import { screenGeo, registerGeoActions } from './geo.js';
 import { subnavHtml, pagerHtml, drawerHtml, stripHtml } from './nav.js';
 
 const root = document.getElementById('app');
@@ -26,6 +27,7 @@ function routeScreen() {
     case 'sec': return SA.screenSection(parts[1]);
     case 'obj': ui.state.objId = parts[1]; return SA.screenObject(parts[1], q.get('t') || 'card');
     case 'registry': return screenRegistry(q);
+    case 'geo': return screenGeo();
     case 'cam': return SA.screenCam(q);
     case 'comms': return SB.screenComms();
     case 'control': return SB.screenControl();
@@ -139,6 +141,7 @@ document.getElementById('modal').addEventListener('click', e => { if (e.target.i
 SA.registerScreenActions();
 SB.registerScreenActionsB();
 registerRegistryActions();
+registerGeoActions();
 
 // ---------- офлайн-служба ----------
 function showUpdate() {

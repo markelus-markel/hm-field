@@ -316,3 +316,10 @@ input, textarea, select, canvas { scroll-margin-top: calc(var(--hh, 57px) + 76px
 .uid { font-size: 12px; word-break: break-all; }
 .fl { display: block; margin: 10px 0; font-weight: 600; font-size: 14px; }
 .fl .in { display: block; width: 100%; margin-top: 4px; font-weight: 400; }
+
+/* привязка к карте */
+.geo-map { position: relative; z-index: 0; isolation: isolate; height: 320px; border-radius: 12px; overflow: hidden; margin: 10px 0; background: var(--bg2, #e8ecef); border: 1px solid var(--line); }
+.geo-map .hint { padding: 12px; margin: 0; }
+.reg-card, .geo-card { grid-template-columns: 1fr; margin-top: 10px; }
+.reg-card span, .geo-card span { font-weight: 500; opacity: .92; }
+.leaflet-container { font: inherit; }
