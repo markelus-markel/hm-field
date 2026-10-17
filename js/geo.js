@@ -34,6 +34,7 @@ export function geoFeature() {
 let L = null, map = null, marker = null, circle = null;
 let draft = null, saved = null, gpsFix = null;
 let startMode = false, onChange = null;
+let onAddr = null;
 let revTimer = null, revSeq = 0, lastRev = null, addrPoint = null;
 export const lastReverse = () => lastRev;
 export function noteAddressPoint(p) { addrPoint = p; refresh(false); }
@@ -106,6 +107,7 @@ function scheduleReverse() {
       const road = a.road || a.pedestrian || '';
       const field = road ? [city && 'г. ' + city, road, a.house_number].filter(Boolean).join(', ') : '';
       lastRev = { name: j.display_name, field, hasHouse: !!a.house_number };
+      if (startMode && onAddr && field) onAddr(lastRev);
       setAddrBox(`<div class="hint">Адрес по метке: <b>${esc(j.display_name)}</b></div>` +
         (startMode && field ? `<button class="btn ghost" data-act="addr-use">Подставить в поле «Адрес здания»${a.house_number ? '' : ' (допишите номер дома)'}</button>` : ''));
     } catch { if (my === revSeq) { lastRev = null; setAddrBox('<span class="hint">Адрес по метке не определён (нужен интернет).</span>'); } }
@@ -150,15 +152,15 @@ async function mountMap() {
     if (startMode || canEdit()) map.on('click', e => setDraft(e.latlng, 'pin', false));
     marker = null; circle = null;
     refresh(false);
-    ui.cleanup = () => { if (map) { map.remove(); map = null; marker = null; circle = null; } startMode = false; onChange = null; };
+    ui.cleanup = () => { if (map) { map.remove(); map = null; marker = null; circle = null; } startMode = false; onChange = null; onAddr = null; };
   } catch (e) {
     box.innerHTML = `<div class="blk">${esc(e.message)}. Координаты можно ввести вручную.</div>`;
   }
 }
 
 // Редактор точки на экране старта нового обследования (до создания записи).
-export function startGeoEditor(change) {
-  startMode = true; onChange = change; saved = null; gpsFix = null; addrPoint = null; lastRev = null;
+export function startGeoEditor(change, addrCb) {
+  startMode = true; onChange = change; onAddr = addrCb || null; saved = null; gpsFix = null; addrPoint = null; lastRev = null;
   return { html: mapCards('', ''), mount: mountMap };
 }
 export function resetStartGeo() { draft = null; addrPoint = null; lastRev = null; }

@@ -1,5 +1,5 @@
 // Офлайн-служба. При любом изменении файлов приложения увеличьте VERSION.
-const VERSION = 'hm-field-v0.7.5';
+const VERSION = 'hm-field-v0.7.7';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/model.js', 'js/db.js', 'js/zip.js', 'js/util.js', 'js/ui.js', 'js/camera.js', 'js/nav.js', 'js/registry.js', 'js/geo.js', 'js/home.js',

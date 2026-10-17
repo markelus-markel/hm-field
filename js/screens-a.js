@@ -30,7 +30,7 @@ export async function storageReport() {
 }
 
 // ---------- старт ----------
-let findTimer = null, findSeq = 0;
+let findTimer = null, findSeq = 0, addrAuto = true;
 function scheduleFind() { clearTimeout(findTimer); findTimer = setTimeout(() => findOnMap(false), 1500); }
 async function findOnMap(force) {
   const el = $('#addr-find'); if (!el) return;
@@ -67,7 +67,14 @@ function syncStart() {
 export function screenStart() {
   const cfg = A.cfg;
   resetStartGeo();
-  const ge = startGeoEditor(() => syncStart());
+  addrAuto = true;
+  const ge = startGeoEditor(() => syncStart(), r => {
+    // адрес по метке подставляется сам, пока человек не начал печатать адрес вручную
+    const f = $('#f-addr');
+    if (!f || !(addrAuto || !f.value.trim())) return;
+    f.value = r.field; addrAuto = true; noteAddressPoint(null); syncStart();
+    $('#addr-find').innerHTML = r.hasHouse ? 'Адрес подставлен по метке. Проверьте его.' : '<span class="bad-t">Адрес подставлен по метке, но без номера дома. Допишите номер дома.</span>';
+  });
   return {
     title: 'Новое обследование', sub: 'HouseMaster Field', back: '#/', nav: false,
     html: `
@@ -83,7 +90,7 @@ export function screenStart() {
     </section>
     <section class="card">
       <h2>Здание</h2>
-      ${field('Адрес здания', `<input class="in" id="f-addr" placeholder="г. Семей, пр. Шакарима, 13А" autocomplete="off">`, { req: true, hint: 'Город, улица и номер дома. Адрес вводится вручную и работает без интернета.' })}
+      ${field('Адрес здания', `<input class="in" id="f-addr" placeholder="введите адрес или определите место по GPS" autocomplete="off">`, { req: true, hint: 'Город, улица и номер дома. Адрес вводится вручную и работает без интернета.' })}
       <div id="code-prev" class="hint">Коды появятся после ввода адреса.</div>
       <div id="addr-find" class="hint"></div>
       <button class="btn ghost" data-act="addr-find">🔎 Найти на карте по адресу</button>
@@ -102,7 +109,7 @@ export function screenStart() {
     <p class="hint center">Все данные сохраняются на этом телефоне после каждого действия. Интернет нужен только для первой загрузки и для отправки пакета.</p>
     <button class="btn ghost" data-act="restore-pick">Восстановить из резервной копии…</button>`,
     mount: async () => {
-      $('#f-addr').addEventListener('input', () => { syncStart(); scheduleFind(); });
+      $('#f-addr').addEventListener('input', () => { addrAuto = false; syncStart(); scheduleFind(); });
       ge.mount();
       syncStart();
       const s = await storageReport();
@@ -514,7 +521,7 @@ export function registerScreenActions() {
   const a = ui.actions;
   a['addr-use'] = () => {
     const r = lastReverse(); if (!r?.field) return;
-    const f = $('#f-addr'); f.value = r.field; f.dispatchEvent(new Event('input'));
+    const f = $('#f-addr'); f.value = r.field; addrAuto = true; syncStart();
     toast(r.hasHouse ? 'Адрес подставлен' : 'Адрес подставлен. Допишите номер дома', 'ok');
   };
   a['addr-find'] = () => { clearTimeout(findTimer); findOnMap(true); };
