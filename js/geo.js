@@ -177,7 +177,13 @@ export function registerGeoActions() {
       toast(err.code === 1 ? 'Нет разрешения на геолокацию. Разрешите её для сайта в настройках браузера' : err.code === 3 ? 'GPS не ответил вовремя. Выйдите на открытое место и повторите' : 'Не удалось определить место', 'err');
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
   };
-  a['geo-center'] = () => { if (map && draft) map.setView([draft.lat, draft.lng], 19); else toast('Метки пока нет'); };
+  a['geo-center'] = () => {
+    if (!draft) { toast('Метки пока нет: сначала определите место или введите адрес'); return; }
+    if (!map) { toast('Карта не загрузилась (нужен интернет). Координаты метки: ' + geoText(draft), 'err'); return; }
+    map.invalidateSize();
+    map.setView([draft.lat, draft.lng], 19, { animate: false });
+    toast('Карта перемещена к метке', 'ok');
+  };
   a['geo-apply'] = () => {
     const lat = parseFloat(String(document.getElementById('geo-lat').value).replace(',', '.'));
     const lng = parseFloat(String(document.getElementById('geo-lng').value).replace(',', '.'));
