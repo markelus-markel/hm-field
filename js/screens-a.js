@@ -32,7 +32,7 @@ export async function storageReport() {
 export function screenStart() {
   const cfg = A.cfg;
   return {
-    title: 'Обследование', sub: 'HouseMaster Field', nav: false,
+    title: 'Новое обследование', sub: 'HouseMaster Field', back: '#/', nav: false,
     html: `
     <section class="card why-card"><h2>${esc(cfg.intro.title)}</h2><p>${esc(cfg.intro.lead)}</p><p>${esc(cfg.intro.why)}</p>
       <a class="btn ghost" href="#/about">Подробнее: что делать и что получится</a></section>
@@ -48,7 +48,7 @@ export function screenStart() {
     </section>
     <section class="card">
       <h2>Участники</h2>
-      ${field('Обследователь (ФИО)', `<input class="in" id="f-ins" autocomplete="name" placeholder="Фамилия Имя">`, { req: true })}
+      ${field('Обследователь', `<div class="static"><b>${esc(A.profile.name)}</b>${[A.profile.position, A.profile.org].filter(Boolean).length ? '<br><small>' + esc([A.profile.position, A.profile.org].filter(Boolean).join(' · ')) + '</small>' : ''}</div>`, { hint: 'Данные из профиля. <a href="#/profile">Изменить</a>' })}
       ${field('Представитель МКД / ПТ / ОСИ (ФИО)', `<input class="in" id="f-rep" placeholder="Фамилия Имя">`, { req: true })}
       ${field('Должность или организация представителя', `<input class="in" id="f-org" placeholder="необязательно">`)}
     </section>
@@ -176,7 +176,7 @@ export function screenMap() {
     ${(() => { const n = nextStep(); return n ? `<a class="next-card" href="${n.href}"><small>Дальше</small><b>${esc(n.num ? n.num + ' · ' : '')}${esc(n.title)}</b><span>${esc(n.label || 'открыть')} ›</span></a>` : '<div class="done"><b>✓ Все шаги выполнены</b>. Осталось выгрузить пакет на экране «Подписи».</div>'; })()}
     <a class="next-card geo-card" href="#/geo"><small>Привязка к карте города</small><b>${A.S.geo ? '✓ ' + A.S.geo.lat.toFixed(5) + ', ' + A.S.geo.lng.toFixed(5) : 'Не задана'}</b><span>${A.S.geo ? (A.S.geo.accuracy_m != null ? '±' + A.S.geo.accuracy_m + ' м · ' : '') + 'изменить ›' : 'поставить на карту ›'}</span></a>
     <a class="next-card reg-card" href="#/registry"><small>Собирается автоматически</small><b>Реестр и схема</b><span>компоненты, фото, расположение ›</span></a>
-    <p class="hint center"><a href="#/about">Зачем это обследование</a></p>
+    <p class="hint center"><a href="#/">Главная</a> · <a href="#/about">Зачем это обследование</a></p>
     <div class="map">${secs.filter(s => s.kind !== 'misc').map(card).join('')}</div>
     <div class="map">
       <a class="map-i" href="#/comms"><span class="pr">—</span><span class="mt"><b>ЧЛ-10 · Связь и питание</b><small>зон заполнено: ${commsDone}/${rows.length}</small></span>${pill(commsDone === rows.length ? 'closed' : commsDone ? 'in_progress' : 'not_started', commsDone === rows.length ? 'заполнено' : commsDone ? 'в работе' : 'не начато')}</a>
@@ -466,10 +466,11 @@ function camAfterSave(id) {
 export function registerScreenActions() {
   const a = ui.actions;
   a.start = async () => {
-    const ins = $('#f-ins').value, rep = $('#f-rep').value, org = $('#f-org').value;
-    if (!ins.trim() || !rep.trim()) { toast('Укажите обследователя и представителя', 'err'); return; }
+    const rep = $('#f-rep').value, org = $('#f-org').value;
+    if (!rep.trim()) { toast('Укажите представителя', 'err'); return; }
+    const P = A.profile;
     try { await navigator.storage?.persist?.(); } catch { /* необязательно */ }
-    createSurvey({ inspector: ins, representative: rep, representative_org: org });
+    createSurvey({ inspector: { name: P.name, position: P.position, org: P.org, profile_id: P.id }, representative: rep, representative_org: org });
     await flush();
     ui.go('#/access');
   };

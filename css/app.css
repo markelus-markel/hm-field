@@ -323,3 +323,12 @@ input, textarea, select, canvas { scroll-margin-top: calc(var(--hh, 57px) + 76px
 .reg-card, .geo-card { grid-template-columns: 1fr; margin-top: 10px; }
 .reg-card span, .geo-card span { font-weight: 500; opacity: .92; }
 .leaflet-container { font: inherit; }
+
+/* главная и профиль */
+.hello h2 { margin: 2px 0 4px; }
+.hello small { text-transform: uppercase; letter-spacing: .06em; color: var(--mute); font-size: 12px; }
+.static { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.static small { color: var(--mute); }
+.quick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.quick-i { display: flex; flex-direction: column; gap: 2px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: inherit; background: var(--card); min-height: 64px; }
+.quick-i small { color: var(--mute); word-break: break-word; }

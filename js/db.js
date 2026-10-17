@@ -35,6 +35,7 @@ function run(store, mode, fn) {
 
 export const kvGet = k => run('kv', 'readonly', s => s.get(k));
 export const kvSet = (k, v) => run('kv', 'readwrite', s => s.put(v, k));
+export const kvDelete = k => run('kv', 'readwrite', s => s.delete(k));
 export const photoPut = rec => run('photos', 'readwrite', s => s.put(rec));
 export const photoGet = id => run('photos', 'readonly', s => s.get(id));
 export const photoAll = () => run('photos', 'readonly', s => s.getAll());

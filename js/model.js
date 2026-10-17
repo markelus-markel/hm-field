@@ -5,13 +5,14 @@ import * as db from './db.js';
 export const A = {
   cfg: null,
   S: null,
+  profile: null,   // профиль пользователя на этом телефоне
   PH: new Map(),   // метаданные фото (без самих файлов)
   log: [],
   saveState: 'saved',
   listeners: new Set(),
 };
 
-export const APP_VERSION = '0.5.0';
+export const APP_VERSION = '0.6.0';
 
 // ---------- общие помощники ----------
 export function nowISO() {
@@ -86,6 +87,32 @@ export function logTextChange(path, oldV, newV) {
   addLog({ kind: 'set', path, old: clip(oldV), new: clip(newV) });
 }
 
+// ---------- профиль пользователя ----------
+function newProfile(d) {
+  const t = nowISO();
+  return {
+    id: 'usr-' + newUid().slice(4), name: d.name.trim(), position: (d.position || '').trim(), org: (d.org || '').trim(),
+    phone: (d.phone || '').trim(), created_at: t, updated_at: t,
+  };
+}
+export function saveProfile(d) {
+  const name = String(d.name || '').trim().replace(/\s+/g, ' ');
+  if (name.length < 3) return { ok: false, error: 'Укажите ФИО: фамилию и имя' };
+  if (name.length > 80) return { ok: false, error: 'ФИО слишком длинное' };
+  const phone = String(d.phone || '').trim();
+  const digits = phone.replace(/\D/g, '');
+  if (phone && (digits.length < 10 || digits.length > 15)) return { ok: false, error: 'Проверьте телефон: от 10 до 15 цифр' };
+  const clean = { name, position: d.position, org: d.org, phone };
+  if (A.profile) A.profile = { ...A.profile, name, position: String(clean.position || '').trim(), org: String(clean.org || '').trim(), phone, updated_at: nowISO() };
+  else A.profile = newProfile(clean);
+  db.kvSet('profile', A.profile).catch(() => {});
+  return { ok: true };
+}
+export async function clearProfile() {
+  A.profile = null;
+  await db.kvDelete('profile');
+}
+
 // ---------- создание обследования ----------
 export function createSurvey({ inspector, representative, representative_org }) {
   const cfg = A.cfg;
@@ -101,7 +128,8 @@ export function createSurvey({ inspector, representative, representative_org }) 
     status: 'draft',
     started_at: nowISO(),
     finished_at: null,
-    inspector: { name: inspector.trim() },
+    inspector: typeof inspector === 'string' ? { name: inspector.trim() }
+      : { name: inspector.name.trim(), position: inspector.position || '', org: inspector.org || '', profile_id: inspector.profile_id || null },
     representative: { name: representative.trim(), org: (representative_org || '').trim() },
     entrances_count: null,
     geo: null,
@@ -133,9 +161,15 @@ export function createSurvey({ inspector, representative, representative_org }) 
 
 export async function initState() {
   await loadConfig();
+  A.profile = (await db.kvGet('profile')) || null;
   const S = await db.kvGet('survey');
   if (!S) return false;
   A.S = S;
+  // обследование из версий до 0.6.0: профиль создаётся из имени обследователя, работа не прерывается
+  if (!A.profile) {
+    A.profile = newProfile({ name: S.inspector.name, position: S.inspector.position || '', org: S.inspector.org || '', phone: '' });
+    try { await db.kvSet('profile', A.profile); } catch (e) { /* сохранится при следующем запуске */ }
+  }
   const photos = await db.photoAll();
   A.PH = new Map(photos.map(p => [p.photo_id, stripBlobs(p)]));
   A.log = await db.logAll();
@@ -161,12 +195,17 @@ function reconcileCounters() {
 }
 
 export async function replaceFromBackup({ survey, photos, log, revisions }) {
+  const keep = A.profile;
   await db.replaceAll({ survey, photos, log, revisions });
+  if (keep) await db.kvSet('profile', keep);
   await initState();
 }
 
+// Очистка удаляет обследование и фото. Профиль пользователя остаётся.
 export async function wipeDevice() {
+  const keep = A.profile;
   await db.wipeAll();
+  if (keep) await db.kvSet('profile', keep);
   A.S = null; A.PH = new Map(); A.log = [];
 }
 

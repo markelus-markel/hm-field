@@ -6,6 +6,7 @@ import * as SB from './screens-b.js';
 import { esc } from './util.js';
 import { screenRegistry, registerRegistryActions } from './registry.js';
 import { screenGeo, registerGeoActions } from './geo.js';
+import { screenWelcome, screenHome, screenProfile, registerHomeActions } from './home.js';
 import { subnavHtml, pagerHtml, drawerHtml, stripHtml } from './nav.js';
 
 const root = document.getElementById('app');
@@ -21,8 +22,11 @@ function routeScreen() {
   const r = parts[0] || '';
   if (r === 'service') return SB.screenService();
   if (r === 'about') return SA.screenAbout();
-  if (!A.S) return SA.screenStart();
+  if (!A.profile) return screenWelcome();
+  if (r === 'profile') return screenProfile();
+  if (!A.S) return r === 'new' ? SA.screenStart() : screenHome();
   switch (r) {
+    case '': case 'home': case 'new': return screenHome();
     case 'access': return SA.screenAccess();
     case 'sec': return SA.screenSection(parts[1]);
     case 'obj': ui.state.objId = parts[1]; return SA.screenObject(parts[1], q.get('t') || 'card');
@@ -142,6 +146,7 @@ SA.registerScreenActions();
 SB.registerScreenActionsB();
 registerRegistryActions();
 registerGeoActions();
+registerHomeActions();
 
 // ---------- офлайн-служба ----------
 function showUpdate() {
