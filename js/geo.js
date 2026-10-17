@@ -54,7 +54,7 @@ const same = (a, b) => !!a && !!b && a.lat === b.lat && a.lng === b.lng;
 
 function statusHtml() {
   const g = draft;
-  if (!g) return '<div class="blk"><b>Привязка не задана</b><br>Встаньте у здания и нажмите «Определить по GPS» или поставьте метку на карте.</div>';
+  if (!g) return '<div class="blk"><b>Привязка не задана</b><br>Встаньте у здания и нажмите кнопку «Определить по GPS» ниже или поставьте метку на карте.</div>';
   const unsaved = !startMode && !same(saved, g);
   const warn = [];
   if (g.accuracy_m != null && g.accuracy_m > 30) warn.push(`Точность GPS низкая (±${g.accuracy_m} м). Выйдите на открытое место или уточните метку вручную.`);
@@ -95,10 +95,10 @@ function mapCards(d, intro) {
   return `<section class="card"><h2>Здание на карте</h2>
       ${intro}
       <div id="geo-status">${statusHtml()}</div>
+      <div class="row"><button class="btn big" data-act="geo-gps"${d}>📍 Определить по GPS</button></div>
       <div id="geomap" class="geo-map"><p class="hint">Карта загружается…</p></div>
       <p class="hint">Нажмите на карту или перетащите метку, чтобы поставить её точно на здание. Без интернета подложка не загрузится, но GPS и координаты работают.</p>
-      <div class="row"><button class="btn" data-act="geo-gps"${d}>📍 Определить по GPS</button>
-      <button class="btn ghost" data-act="geo-center">К метке</button></div></section>
+      <button class="btn ghost" data-act="geo-center">К метке</button></section>
     <section class="card"><h2>Координаты</h2>
       <label class="fl">Широта<input class="in" id="geo-lat" inputmode="decimal" placeholder="например: 50.4111" value="${draft ? draft.lat : ''}" autocomplete="off"${d}></label>
       <label class="fl">Долгота<input class="in" id="geo-lng" inputmode="decimal" placeholder="например: 80.2275" value="${draft ? draft.lng : ''}" autocomplete="off"${d}></label>
