@@ -44,7 +44,7 @@ function setBase(kind) {
   if (map && L) {
     if (baseLayer) map.removeLayer(baseLayer);
     baseLayer = kind === 'sat'
-      ? L.tileLayer(SAT, { maxZoom: 19, attribution: 'Esri World Imagery' })
+      ? L.tileLayer(SAT, { maxZoom: 19, maxNativeZoom: 17, attribution: 'Esri World Imagery' })
       : L.tileLayer(TILES, { maxZoom: 19, attribution: '© OpenStreetMap' });
     baseLayer.addTo(map); baseLayer.bringToBack();
   }
