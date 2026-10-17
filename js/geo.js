@@ -8,7 +8,7 @@ import { esc } from './util.js';
 const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const osmLink = g => `https://www.openstreetmap.org/?mlat=${g.lat}&mlon=${g.lng}#map=19/${g.lat}/${g.lng}`;
 export const geoText = g => (g ? `${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}` : 'не задана');
-export const geoSourceLabel = s => ({ gps: 'GPS телефона', pin: 'метка на карте', manual: 'ввод вручную' }[s] || s || '—');
+export const geoSourceLabel = s => ({ gps: 'GPS телефона', pin: 'метка на карте', manual: 'ввод вручную', address: 'поиск по адресу' }[s] || s || '—');
 
 // Точка здания в формате GeoJSON (для городских карт и GIS). Порядок координат: долгота, широта.
 export function geoFeature() {
@@ -130,6 +130,22 @@ export function startGeoEditor(change) {
   return { html: mapCards('', ''), mount: mountMap };
 }
 export function resetStartGeo() { draft = null; }
+
+// Поиск адреса в OpenStreetMap (Nominatim). Только онлайн; запросы редкие (пауза после ввода), как требует политика сервиса.
+export async function geocodeAddress(q) {
+  const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=ru&countrycodes=kz&q=' + encodeURIComponent(q);
+  const r = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!r.ok) throw new Error('http ' + r.status);
+  const j = await r.json();
+  if (!j.length) return null;
+  return { lat: +j[0].lat, lng: +j[0].lon, name: j[0].display_name };
+}
+// Ставит метку по найденному адресу. Точку, которую человек уже поставил сам (GPS, палец, координаты), не трогает без force.
+export function applyAddressPoint(p, force = false) {
+  if (!force && draft && draft.source !== 'address') return false;
+  setDraft(p, 'address', true);
+  return true;
+}
 
 export function screenGeo() {
   startMode = false; onChange = null;

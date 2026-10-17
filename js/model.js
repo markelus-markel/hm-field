@@ -12,7 +12,7 @@ export const A = {
   listeners: new Set(),
 };
 
-export const APP_VERSION = '0.7.0';
+export const APP_VERSION = '0.7.1';
 
 // ---------- общие помощники ----------
 export function nowISO() {
@@ -161,7 +161,7 @@ export function createSurvey({ inspector, representative, representative_org, ad
     representative: { name: representative.trim(), org: (representative_org || '').trim() },
     entrances_count: null,
     geo: geo ? { lat: +Number(geo.lat).toFixed(6), lng: +Number(geo.lng).toFixed(6), accuracy_m: geo.accuracy_m == null ? null : Math.round(geo.accuracy_m),
-      source: ['gps', 'pin', 'manual'].includes(geo.source) ? geo.source : 'manual', set_at: nowISO(), set_by: '',
+      source: ['gps', 'pin', 'manual', 'address'].includes(geo.source) ? geo.source : 'manual', set_at: nowISO(), set_by: '',
       ...(geo.gps_fix ? { gps_fix: geo.gps_fix, pin_offset_m: geo.pin_offset_m ?? null } : {}) } : null,
     zones: {},
     sections: {},
@@ -386,7 +386,7 @@ export function setGeo(d) {
   const g = {
     lat: +lat.toFixed(6), lng: +lng.toFixed(6),
     accuracy_m: d.accuracy_m == null ? null : Math.round(d.accuracy_m),
-    source: ['gps', 'pin', 'manual'].includes(d.source) ? d.source : 'manual',
+    source: ['gps', 'pin', 'manual', 'address'].includes(d.source) ? d.source : 'manual',
     set_at: nowISO(), set_by: A.S.inspector.name,
   };
   if (d.gps_fix) { g.gps_fix = d.gps_fix; g.pin_offset_m = d.pin_offset_m ?? null; }

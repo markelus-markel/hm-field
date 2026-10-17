@@ -14,7 +14,7 @@ import { startStream, stopStream, grabFrame, fromFile, savePhoto } from './camer
 import { esc, LBL, STATUS, fmtDT, fmtTime, fmtBytes } from './util.js';
 import { nextStep, why } from './nav.js';
 import { attrOf } from './registry.js';
-import { startGeoEditor, resetStartGeo, startGeo } from './geo.js';
+import { startGeoEditor, resetStartGeo, startGeo, geocodeAddress, applyAddressPoint } from './geo.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 export const camURL = (scope, ref, slot, back) =>
@@ -30,6 +30,28 @@ export async function storageReport() {
 }
 
 // ---------- старт ----------
+let findTimer = null, findSeq = 0;
+function scheduleFind() { clearTimeout(findTimer); findTimer = setTimeout(() => findOnMap(false), 1500); }
+async function findOnMap(force) {
+  const el = $('#addr-find'); if (!el) return;
+  const raw = $('#f-addr').value.trim();
+  const dv = deriveObject(raw);
+  if (!dv.ok) { if (force) el.textContent = dv.error; return; }
+  const q = dv.object_code.startsWith('OBJ-') ? raw + ', Семей' : raw;
+  const my = ++findSeq;
+  el.textContent = 'Ищу адрес на карте…';
+  try {
+    const r = await geocodeAddress(q);
+    if (my !== findSeq || !$('#f-addr')) return;
+    if (!r) { el.innerHTML = '<span class="bad-t">Адрес не найден. Поставьте метку на карте вручную или проверьте написание.</span>'; return; }
+    const placed = applyAddressPoint(r, force);
+    el.innerHTML = placed ? `Найдено: ${esc(r.name)}.<br>Проверьте метку и при необходимости перетащите её точно на здание.`
+      : 'Точка уже задана вами вручную, метка не сдвигалась. Нажмите «Найти на карте по адресу», чтобы перенести её.';
+  } catch {
+    if (my === findSeq && $('#addr-find')) el.innerHTML = '<span class="bad-t">Поиск адреса недоступен без интернета. Поставьте метку по GPS, на карте или введите координаты.</span>';
+  }
+}
+
 function syncStart() {
   const addr = $('#f-addr'); if (!addr) return;
   const dv = deriveObject(addr.value);
@@ -62,6 +84,8 @@ export function screenStart() {
       <h2>Здание</h2>
       ${field('Адрес здания', `<input class="in" id="f-addr" placeholder="г. Семей, пр. Шакарима, 13А" autocomplete="off">`, { req: true, hint: 'Город, улица и номер дома. Адрес вводится вручную и работает без интернета.' })}
       <div id="code-prev" class="hint">Коды появятся после ввода адреса.</div>
+      <div id="addr-find" class="hint"></div>
+      <button class="btn ghost" data-act="addr-find">🔎 Найти на карте по адресу</button>
     </section>
     ${ge.html}
     <section class="card">
@@ -77,7 +101,7 @@ export function screenStart() {
     <p class="hint center">Все данные сохраняются на этом телефоне после каждого действия. Интернет нужен только для первой загрузки и для отправки пакета.</p>
     <button class="btn ghost" data-act="restore-pick">Восстановить из резервной копии…</button>`,
     mount: async () => {
-      $('#f-addr').addEventListener('input', syncStart);
+      $('#f-addr').addEventListener('input', () => { syncStart(); scheduleFind(); });
       ge.mount();
       syncStart();
       const s = await storageReport();
@@ -487,6 +511,7 @@ function camAfterSave(id) {
 
 export function registerScreenActions() {
   const a = ui.actions;
+  a['addr-find'] = () => { clearTimeout(findTimer); findOnMap(true); };
   a.start = async () => {
     const rep = $('#f-rep').value, org = $('#f-org').value;
     const dv = deriveObject($('#f-addr').value);
