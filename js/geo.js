@@ -35,6 +35,37 @@ let L = null, map = null, marker = null, circle = null;
 let draft = null, saved = null, gpsFix = null;
 let startMode = false, onChange = null;
 let onAddr = null;
+const SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+let baseKind = 'osm', baseLayer = null;
+try { if (localStorage.getItem('hm_base') === 'sat') baseKind = 'sat'; } catch { /* необязательно */ }
+function setBase(kind) {
+  baseKind = kind;
+  try { localStorage.setItem('hm_base', kind); } catch { /* необязательно */ }
+  if (map && L) {
+    if (baseLayer) map.removeLayer(baseLayer);
+    baseLayer = kind === 'sat'
+      ? L.tileLayer(SAT, { maxZoom: 19, attribution: 'Esri World Imagery' })
+      : L.tileLayer(TILES, { maxZoom: 19, attribution: '© OpenStreetMap' });
+    baseLayer.addTo(map); baseLayer.bringToBack();
+  }
+  document.querySelectorAll('[data-act="geo-base"]').forEach(b => b.classList.toggle('on', b.dataset.b === kind));
+}
+function pinIcon() {
+  return L.divIcon({
+    className: 'hm-pin', iconSize: [36, 46], iconAnchor: [18, 46],
+    html: '<svg viewBox="0 0 36 46" width="36" height="46"><path d="M18 45C18 45 3 28 3 17a15 15 0 0 1 30 0c0 11-15 28-15 28z" fill="#e5484d" stroke="#fff" stroke-width="2.5"/><circle cx="18" cy="17" r="6" fill="#fff"/></svg>',
+  });
+}
+function labelText() {
+  const f = startMode ? (document.getElementById('f-addr')?.value.trim() || (lastRev && lastRev.field) || '') : (A.S ? A.S.address : '');
+  return String(f).replace(/^\s*(г\.\s*|г\s+|город\s+)?[^,]*,\s*(?=.*,)/i, '').trim();
+}
+export function refreshLabel() {
+  if (!marker) return;
+  const t = labelText();
+  if (marker.getTooltip()) marker.unbindTooltip();
+  if (t) marker.bindTooltip(document.createTextNode ? Object.assign(document.createElement('span'), { textContent: t }) : t, { permanent: true, direction: 'top', offset: [0, -46], className: 'hm-tip' }).openTooltip();
+}
 let revTimer = null, revSeq = 0, lastRev = null, addrPoint = null;
 export const lastReverse = () => lastRev;
 export function noteAddressPoint(p) { addrPoint = p; refresh(false); }
@@ -82,12 +113,13 @@ function refresh(pan) {
   if (!map || !draft) return;
   const ll = [draft.lat, draft.lng];
   if (!marker) {
-    marker = L.marker(ll, { draggable: canEdit() }).addTo(map);
+    marker = L.marker(ll, { draggable: startMode || canEdit(), icon: pinIcon() }).addTo(map);
+    refreshLabel();
     marker.on('dragend', () => { const p = marker.getLatLng(); setDraft({ lat: p.lat, lng: p.lng }, 'pin', false); });
   } else marker.setLatLng(ll);
   if (circle) { map.removeLayer(circle); circle = null; }
-  if (draft.accuracy_m != null && draft.source === 'gps') circle = L.circle(ll, { radius: draft.accuracy_m, weight: 1 }).addTo(map);
-  if (pan) map.setView(ll, 19);
+  if (draft.accuracy_m != null && draft.source === 'gps') circle = L.circle(ll, { radius: draft.accuracy_m, weight: 2, dashArray: '5 6', color: '#2f7fe0', fill: false }).addTo(map);
+  if (pan) map.setView(ll, draft.source === 'gps' ? 18 : 19);
 }
 
 function setAddrBox(html) { const el = document.getElementById('geo-addr'); if (el) el.innerHTML = html; }
@@ -130,6 +162,7 @@ function mapCards(d, intro) {
       <div id="geo-status">${statusHtml()}</div>
       <div id="geo-addr"></div>
       <div class="row"><button class="btn big" data-act="geo-gps"${d}>📍 Определить по GPS</button></div>
+      <div class="seg"><button data-act="geo-base" data-b="osm" class="${baseKind === 'osm' ? 'on' : ''}">Схема</button><button data-act="geo-base" data-b="sat" class="${baseKind === 'sat' ? 'on' : ''}">Спутник</button></div>
       <div id="geomap" class="geo-map"><p class="hint">Карта загружается…</p></div>
       <p class="hint">Нажмите на карту или перетащите метку, чтобы поставить её точно на здание. Без интернета подложка не загрузится, но GPS и координаты работают.</p>
       <button class="btn ghost" data-act="geo-center">К метке</button></section>
@@ -148,7 +181,7 @@ async function mountMap() {
     box.innerHTML = '';
     L.Icon.Default.imagePath = 'vendor/leaflet/images/';
     map = L.map(box, { zoomControl: true }).setView(draft ? [draft.lat, draft.lng] : [SEMEY.lat, SEMEY.lng], draft ? 19 : 13);
-    L.tileLayer(TILES, { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    baseLayer = null; setBase(baseKind);
     if (startMode || canEdit()) map.on('click', e => setDraft(e.latlng, 'pin', false));
     marker = null; circle = null;
     refresh(false);
@@ -211,6 +244,7 @@ export function registerGeoActions() {
       toast(err.code === 1 ? 'Нет разрешения на геолокацию. Разрешите её для сайта в настройках браузера' : err.code === 3 ? 'GPS не ответил вовремя. Выйдите на открытое место и повторите' : 'Не удалось определить место', 'err');
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
   };
+  a['geo-base'] = el => setBase(el.dataset.b);
   a['geo-center'] = () => {
     if (!draft) { toast('Метки пока нет: сначала определите место или введите адрес'); return; }
     if (!map) { toast('Карта не загрузилась (нужен интернет). Координаты метки: ' + geoText(draft), 'err'); return; }

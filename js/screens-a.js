@@ -14,7 +14,7 @@ import { startStream, stopStream, grabFrame, fromFile, savePhoto } from './camer
 import { esc, LBL, STATUS, fmtDT, fmtTime, fmtBytes } from './util.js';
 import { nextStep, why } from './nav.js';
 import { attrOf } from './registry.js';
-import { startGeoEditor, resetStartGeo, startGeo, geocodeAddress, applyAddressPoint, noteAddressPoint, lastReverse } from './geo.js';
+import { startGeoEditor, resetStartGeo, startGeo, geocodeAddress, applyAddressPoint, noteAddressPoint, lastReverse, refreshLabel } from './geo.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 export const camURL = (scope, ref, slot, back) =>
@@ -55,6 +55,7 @@ async function findOnMap(force) {
 
 function syncStart() {
   const addr = $('#f-addr'); if (!addr) return;
+  refreshLabel();
   const dv = deriveObject(addr.value);
   $('#code-prev').innerHTML = addr.value.trim()
     ? (dv.ok ? `Код объекта: <b>${esc(dv.object_code)}</b> · префикс номеров: <b>${esc(dv.id_prefix)}</b> (пример: ${esc(dv.id_prefix)}-HV-001)` : `<span class="bad-t">${esc(dv.error)}</span>`)

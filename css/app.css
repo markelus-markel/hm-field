@@ -332,3 +332,11 @@ input, textarea, select, canvas { scroll-margin-top: calc(var(--hh, 57px) + 76px
 .quick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .quick-i { display: flex; flex-direction: column; gap: 2px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: inherit; background: var(--card); min-height: 64px; }
 .quick-i small { color: var(--mute); word-break: break-word; }
+
+/* переключатель подложки и метка на карте */
+.seg{display:flex;gap:0;margin:8px 0;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;padding:10px 8px;background:transparent;color:inherit;border:0;font:inherit;font-weight:600}
+.seg button.on{background:var(--pri);color:var(--pri-ink)}
+.hm-pin{background:none;border:0}
+.leaflet-tooltip.hm-tip{background:#fff;color:#111;border:0;font-weight:600;font-size:13px;width:max-content;max-width:250px;white-space:normal;padding:4px 8px;box-shadow:0 1px 6px rgba(0,0,0,.5)}
+.leaflet-tooltip-top.hm-tip:before{border-top-color:#fff}
